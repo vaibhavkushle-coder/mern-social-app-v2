@@ -114,7 +114,7 @@ io.on("connection", (socket) => {
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://frontend-one-omega-14.vercel.app",
   }),
 );
 
@@ -125,7 +125,7 @@ app.use("/api/notification", notificationRoutes);
 app.use("/api/message", messageRoutes);
 app.use("/api/report", reportRoutes);
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 app.get("/", (req, res) => {
   res.send("Backend Running🚀");
