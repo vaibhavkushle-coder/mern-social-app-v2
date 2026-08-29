@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@keyframes heartPop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+
+  40% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes modalFade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes modalFadeOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modalScaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+.modal-overlay-close {
+  animation: modalFadeOut 0.35s ease forwards;
+}
+
+.modal-content-close {
+  animation: modalScaleOut 0.35s ease forwards;
+}
+
+.modal-overlay {
+  animation: modalFade 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.modal-content {
+  animation: m0dalScale 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.heart-animation {
+  animation: heartPop 0.8s ease-out;
+}
