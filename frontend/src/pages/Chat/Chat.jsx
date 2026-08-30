@@ -1049,10 +1049,7 @@ text-sm shadow-sm"
           </div>
         )}
 
-        <div
-          className="relative shrink-0 px-4 py-3 border-t
-         border-white/10 bg-black/95 backdrop-blur-xl"
-        >
+        <div className="relative shrink-0 px-3 mb-2">
           <div
             className="flex items-center gap-1.5 w-full
         px-2 py-1.5 bg-[#1b1e27] border border-white/10
