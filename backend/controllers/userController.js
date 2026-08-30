@@ -391,7 +391,7 @@ async function savePost(req, res) {
 
     if (!user) {
       return res.status(404).json({
-        message: "Post already saved",
+        message: "User not found",
       });
     }
 

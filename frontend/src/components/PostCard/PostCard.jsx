@@ -97,6 +97,17 @@ function PostCard({
       ? captionText
       : captionText.slice(0, CAPTION_LIMIT);
 
+  useEffect(() => {
+    if (!user?.savedPosts || !post?._id) return;
+
+    const alreadySaved = user.savedPosts.some(
+      (savedPost) =>
+        (savedPost._id || savedPost).toString() === post._id.toString(),
+    );
+
+    setIsSave(alreadySaved);
+  }, [user, post?._id]);
+
   function handleShowCaption() {
     setShowFullCaption(true);
   }

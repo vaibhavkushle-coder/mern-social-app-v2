@@ -2,7 +2,7 @@ import axios from "axios";
 import socket from "../socket";
 
 const api = axios.create({
-  baseURL: "https://mern-social-backend-hl8v.onrender.com",
+  baseURL: "https://mern-social-backend-hl8v.onrender.com/api",
 });
 
 api.interceptors.request.use((config) => {
