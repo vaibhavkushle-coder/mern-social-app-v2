@@ -6,7 +6,6 @@ import ProfileContent from "../../components/ProfileContent/ProfileContent";
 import { useUser } from "../../hooks/useUser";
 import { useNavigate } from "react-router-dom";
 import FollowButton from "../../components/FollowButton/FollowButton";
-import Button from "../../components/Button/Button";
 import { useSocket } from "../../hooks/useSocket";
 
 function UserProfile() {

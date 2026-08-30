@@ -8,6 +8,7 @@ import {
   searchUsers,
 } from "../../services/userService";
 import { useUser } from "../../hooks/useUser";
+import { useHome } from "../../hooks/useHome";
 
 function Search() {
   const [search, setSearch] = useState("");
@@ -19,6 +20,7 @@ function Search() {
 
   const navigate = useNavigate();
   const { fetchUser } = useUser();
+  const { fetchSuggestedUsers } = useHome();
 
   useEffect(() => {
     const time = setTimeout(() => {
@@ -64,6 +66,7 @@ function Search() {
         ),
       );
       await fetchUser();
+      await fetchSuggestedUsers();
     } catch (error) {
       console.log(error);
     } finally {
@@ -83,6 +86,7 @@ function Search() {
         ),
       );
       await fetchUser();
+      await fetchSuggestedUsers();
     } catch (error) {
       console.log(error);
     } finally {

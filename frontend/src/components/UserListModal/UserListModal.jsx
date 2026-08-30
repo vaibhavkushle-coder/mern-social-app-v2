@@ -4,6 +4,7 @@ import { useUser } from "../../hooks/useUser";
 import { followUser, unfollowUser } from "../../services/userService";
 import { useToast } from "../../hooks/useToast";
 import { useState } from "react";
+import { useHome } from "../../hooks/useHome";
 
 function UserListModal({
   title,
@@ -26,6 +27,8 @@ function UserListModal({
 
   const navigate = useNavigate();
 
+  const { fetchSuggestedUsers } = useHome();
+
   const { user: currentUser, setUser: setCurrentUser } = useUser();
 
   const { showToast } = useToast();
@@ -40,6 +43,7 @@ function UserListModal({
 
       if (isFollowing) {
         await unfollowUser(targetUser._id);
+        await fetchSuggestedUsers();
 
         setCurrentUser((prev) => ({
           ...prev,
@@ -51,6 +55,7 @@ function UserListModal({
         showToast("User Unfollowed successfully", "success");
       } else {
         await followUser(targetUser._id);
+        await fetchSuggestedUsers();
 
         setCurrentUser((prev) => ({
           ...prev,

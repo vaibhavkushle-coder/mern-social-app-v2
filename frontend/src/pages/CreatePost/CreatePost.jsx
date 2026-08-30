@@ -5,6 +5,7 @@ import Navbar from "../../components/Navbar/Navbar";
 import { ImagePlus, FileImage } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 import { FiArrowLeft } from "react-icons/fi";
+import { useHome } from "../../hooks/useHome";
 
 function CreatePost() {
   const [caption, setCaption] = useState("");
@@ -16,6 +17,7 @@ function CreatePost() {
   const navigate = useNavigate();
   const captionRef = useRef(null);
   const fileInputRef = useRef(null);
+  const { fetchPosts } = useHome();
 
   useEffect(() => {
     captionRef.current?.focus();
@@ -34,6 +36,7 @@ function CreatePost() {
     try {
       setCreatingPost(true);
       await createPost(formData);
+      await fetchPosts();
 
       setCaption("");
       setImage(null);

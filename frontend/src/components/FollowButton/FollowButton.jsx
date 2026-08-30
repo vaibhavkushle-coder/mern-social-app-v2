@@ -2,10 +2,13 @@ import Button from "../Button/Button";
 import { useUser } from "../../hooks/useUser";
 import { followUser, unfollowUser } from "../../services/userService";
 import { useToast } from "../../hooks/useToast";
+import { useHome } from "../../hooks/useHome";
 
 function FollowButton({ profileUser, setProfileUser }) {
   const { showToast } = useToast();
   const { user: currentUser, setUser: setCurrentUser } = useUser();
+
+  const { fetchSuggestedUsers } = useHome();
 
   const isFollowing = currentUser?.following?.some((user) => {
     return user._id === profileUser._id;
@@ -15,6 +18,7 @@ function FollowButton({ profileUser, setProfileUser }) {
     try {
       if (isFollowing) {
         await unfollowUser(profileUser._id);
+        await fetchSuggestedUsers();
 
         setCurrentUser((prev) => ({
           ...prev,
@@ -29,9 +33,11 @@ function FollowButton({ profileUser, setProfileUser }) {
             (user) => user._id !== currentUser._id,
           ),
         }));
+
         showToast("User Unfollowed successfully", "success");
       } else {
         await followUser(profileUser._id);
+        await fetchSuggestedUsers();
 
         setCurrentUser((prev) => ({
           ...prev,
