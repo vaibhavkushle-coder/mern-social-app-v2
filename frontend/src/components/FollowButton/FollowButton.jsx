@@ -1,10 +1,11 @@
-import Button from "../Button/Button";
 import { useUser } from "../../hooks/useUser";
 import { followUser, unfollowUser } from "../../services/userService";
 import { useToast } from "../../hooks/useToast";
 import { useHome } from "../../hooks/useHome";
+import { useState } from "react";
 
 function FollowButton({ profileUser, setProfileUser }) {
+  const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
   const { user: currentUser, setUser: setCurrentUser } = useUser();
 
@@ -15,7 +16,10 @@ function FollowButton({ profileUser, setProfileUser }) {
   });
 
   async function handleFollow() {
+    if (loading) return;
     try {
+      setLoading(true);
+
       if (isFollowing) {
         await unfollowUser(profileUser._id);
         await fetchSuggestedUsers();
@@ -57,12 +61,15 @@ function FollowButton({ profileUser, setProfileUser }) {
         error.response?.data?.message || "Something went wrong",
         "error",
       );
+    } finally {
+      setLoading(false);
     }
   }
   return (
     <button
       type="button"
       onClick={handleFollow}
+      disabled={loading}
       className={`
      py-2.5
     rounded-xl
@@ -76,6 +83,11 @@ function FollowButton({ profileUser, setProfileUser }) {
     transition-all
     duration-200
     active:scale-95
+     
+  disabled:opacity-60
+  disabled:cursor-not-allowed
+  disabled:scale-100
+  disabled:shadow-none
 
     ${
       isFollowing
@@ -103,7 +115,7 @@ function FollowButton({ profileUser, setProfileUser }) {
     }
   `}
     >
-      {isFollowing ? "Unfollow" : "Follow"}
+      {loading ? "Loading..." : isFollowing ? "Unfollow" : "Follow"}
     </button>
   );
 }

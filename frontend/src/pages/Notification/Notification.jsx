@@ -54,7 +54,7 @@ function Notification() {
           {/* ================= HEADER ================= */}
           <div
             className="relative flex items-center 
-            justify-between px-7 pt-4 pb-6 border-b mb-5 border-purple-400"
+            justify-between px-7 pt-4 pb-4 border-b mb-5 border-purple-400/30"
             onClick={() => setIsMenuOpen(false)}
           >
             {selectMode ? (
@@ -123,7 +123,7 @@ function Notification() {
             ) : (
               <>
                 <div>
-                  <div className="flex items-center gap-3 -mb-3">
+                  <div className="flex items-center gap-3 -mb-2 -ml-4 -mt-3">
                     <div
                       className="
                       w-9 h-9 rounded-xl
@@ -150,7 +150,7 @@ function Notification() {
                 </div>
 
                 {/* MORE */}
-                <div className="relative">
+                <div className="relative flex -mr-4 -mt-2">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -158,15 +158,15 @@ function Notification() {
                       setIsMenuOpen((prev) => !prev);
                     }}
                     className="
-                    w-11 h-11 rounded-full
+                    w-10 h-10 rounded-full
                     flex items-center justify-center
-                    bg-[#0b0f20]
+                    bg-[#0b0f20] 
                     text-purple-300
                     hover:text-purple-200
                     hover:bg-purple-500/10
                     active:scale-95
                     transition-all duration-200
-                    border border-purple-500/70
+                    border border-purple-500/20 
                     shadow-[0_0_15px_rgba(124,58,237,0.12)]
                   "
                   >
