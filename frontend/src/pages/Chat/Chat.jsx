@@ -60,6 +60,9 @@ function Chat() {
   const touchStartX = useRef(null);
   const touchCurrentX = useRef(null);
 
+  const touchStartY = useRef(null);
+  const touchCurrentY = useRef(null);
+
   const longPressTimer = useRef(null);
   const longPressed = useRef(false);
 
@@ -768,17 +771,26 @@ z-50 overflow-hidden"
                 onTouchStart={(e) => {
                   touchStartX.current = e.touches[0].clientX;
                   touchCurrentX.current = e.touches[0].clientX;
+
+                  touchStartY.current = e.touches[0].clientY;
+                  touchCurrentY.current = e.touches[0].clientY;
                 }}
                 onTouchMove={(e) => {
                   touchCurrentX.current = e.touches[0].clientX;
+                  touchCurrentY.current = e.touches[0].clientY;
 
                   clearTimeout(longPressTimer.current);
 
-                  const distance = touchCurrentX.current - touchStartX.current;
+                  const distanceX = touchCurrentX.current - touchStartX.current;
+                  const distanceY = touchCurrentY.current - touchStartY.current;
 
-                  if (distance > 0 && distance < 80) {
+                  if (Math.abs(distanceY) > Math.abs(distanceX)) {
+                    return;
+                  }
+
+                  if (distanceX > 0 && distanceX < 80) {
                     setSwipingMessageId(message._id);
-                    setSwipeX(distance);
+                    setSwipeX(distanceX);
                   }
                 }}
                 onPointerUp={() => {
@@ -807,6 +819,9 @@ z-50 overflow-hidden"
 
                   touchStartX.current = null;
                   touchCurrentX.current = null;
+
+                  touchStartY.current = null;
+                  touchCurrentY.current = null;
                 }}
                 onPointerLeave={() => {
                   clearTimeout(longPressTimer.current);
