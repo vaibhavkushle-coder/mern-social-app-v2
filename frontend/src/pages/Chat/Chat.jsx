@@ -100,7 +100,6 @@ function Chat() {
 
     return () => {
       window.visualViewport?.removeEventListener("resize", setAppHeight);
-      window.visualViewport?.removeEventListener("scroll", setAppHeight);
     };
   }, []);
 
