@@ -518,11 +518,11 @@ function Chat() {
           </div>
         ) : selectMode ? (
           <div
-            className="flex items-center justify-between px-5 py-4
-         border-b border-white/10 bg-black backdrop-blur-xl
-         sticky top-0 z-10"
+            className="flex items-center gap-3 px-4 py-3
+ border-b border-white/10 bg-black
+ backdrop-blur-xl sticky top-0 z-10"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <FiArrowLeft
                 size={24}
                 onClick={() => {
@@ -532,7 +532,7 @@ function Chat() {
                 className="cursor-pointer text-gray-600"
               />
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <div
                   className="w-9 h-9 rounded-xl bg-violet-500/10
                 text-violet-400 border-violet-500/20
@@ -541,7 +541,9 @@ function Chat() {
                 >
                   {selectedMessageIds.length}
                 </div>
-                <h1 className="text-lg font-bold text-white">Selected</h1>
+                <h1 className="text-base font-bold text-white whitespace-nowrap">
+                  Selected
+                </h1>
               </div>
             </div>
 
@@ -558,9 +560,9 @@ function Chat() {
                     setSelectedMessageIds([]);
                   }
                 }}
-                className="px-4 py-2 text-sm font-semibold
+                className="px-3 py-2 text-sm font-semibold
               text-white bg-blue-500 rounded-xl hover:bg-blue-600
-              active:scale-95 transition"
+              active:scale-95 transition shrink-0 hower:bg-blur-600"
               >
                 ✏️ Edit
               </button>
@@ -580,20 +582,6 @@ function Chat() {
             )}
 
             <div className="flex gap-4">
-              <button
-                onClick={() => {
-                  setSelectMode(false);
-                  setSelectedMessageIds([]);
-                }}
-                className="w-10 h-10 border rounded-full
-              flex items-center justify-center text-gray-400
-               font-bold shadow-sm border-white/10 duration-200
-              hover:bg-gray-100 active:scale-95 transition"
-                title="Cancel"
-              >
-                <FiX size={21} />
-              </button>
-
               {selectedMessageIds.length > 0 && (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
@@ -609,7 +597,7 @@ function Chat() {
           </div>
         ) : (
           <div
-            className="flex items-center justify-between px-5 py-4
+            className="flex items-center justify-between px-5 py-2
          border-b border-white/10 bg-[#151821]/80 backdrop-blur-xl
          sticky top-0 z-10"
           >
@@ -1052,7 +1040,7 @@ text-sm shadow-sm"
         <div className="relative shrink-0 px-3 mb-2">
           <div
             className="flex items-center gap-1.5 w-full
-        px-2 py-1.5 bg-[#1b1e27] border border-white/10
+        px-2 py-1 bg-[#1b1e27] border border-white/10
         rounded-full shadow-lg shadow-black/20
         focus-within:border-violet-500/50 transition-all
         duration-200"
