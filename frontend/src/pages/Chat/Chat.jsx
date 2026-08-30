@@ -785,18 +785,22 @@ z-50 overflow-hidden"
 
                   const distanceY = touchCurrentY.current - touchStartY.current;
 
-                  if (Math.abs(distanceY) > 15) {
+                  const absX = Math.abs(distanceX);
+                  const absY = Math.abs(distanceY);
+
+                  // Vertical scrolling → swipe reply cancel
+                  if (absY > absX) {
                     setSwipingMessageId(null);
                     setSwipeX(0);
                     return;
                   }
 
-                  if (
-                    distanceX > 30 &&
-                    Math.abs(distanceX) > Math.abs(distanceY) * 2
-                  ) {
+                  // Only clear horizontal RIGHT swipe
+                  if (distanceX > 30 && absX > absY * 1.5) {
                     setSwipingMessageId(message._id);
-                    setSwipeX(Math.min(distanceX, 80));
+
+                    // Maximum visual movement = 110px
+                    setSwipeX(Math.min(distanceX, 110));
                   }
                 }}
                 onPointerUp={() => {
@@ -807,8 +811,15 @@ z-50 overflow-hidden"
 
                   const distanceY = touchCurrentY.current - touchStartY.current;
 
+                  const absX = Math.abs(distanceX);
+                  const absY = Math.abs(distanceY);
+
+                  // Reply only when:
+                  // 1. Right swipe
+                  // 2. At least 110px
+                  // 3. Horizontal movement clearly dominates vertical movement
                   const isValidReplySwipe =
-                    distanceX > 170 && Math.abs(distanceY) <= 15;
+                    distanceX > 110 && absX > absY * 1.5;
 
                   if (isValidReplySwipe) {
                     const messageToReply = messages.find(
@@ -818,12 +829,13 @@ z-50 overflow-hidden"
                     if (messageToReply) {
                       setReplyMessage(messageToReply);
 
-                      setTimeout(() => {
+                      requestAnimationFrame(() => {
                         inputRef.current?.focus();
-                      }, 0);
+                      });
                     }
                   }
 
+                  // Reset swipe
                   setSwipeX(0);
                   setSwipingMessageId(null);
 
@@ -850,19 +862,24 @@ z-50 overflow-hidden"
                     swipingMessageId === message._id
                       ? `translateX(${swipeX}px)`
                       : "translateX(0)",
+
                   transition:
                     swipingMessageId === message._id
                       ? "none"
                       : "transform 0.2s ease",
                 }}
               >
-                {swipingMessageId === message._id && swipeX > 100 && (
+                {swipingMessageId === message._id && swipeX > 60 && (
                   <div
                     className="flex items-center justify-center
-                w-10 h-10 rounded-full bg-blue-500 
-                text-white shrink-0"
+      w-10 h-10 shrink-0
+      rounded-full
+      bg-violet-600/90
+      text-white
+      shadow-lg shadow-violet-500/30
+      animate-pulse"
                   >
-                    ↩
+                    <FiCornerUpLeft size={19} />
                   </div>
                 )}
                 <div
