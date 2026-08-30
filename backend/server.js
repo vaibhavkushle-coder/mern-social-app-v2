@@ -27,6 +27,7 @@ const io = new Server(server, {
     origin: [
       "http://localhost:5173",
       "https://frontend-one-omega-14.vercel.app",
+      "https://frontend-git-main-vaibhavkushle-coders-projects.vercel.app",
     ],
     methods: ["GET", "POST"],
   },
