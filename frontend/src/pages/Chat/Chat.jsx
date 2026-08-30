@@ -782,25 +782,35 @@ z-50 overflow-hidden"
                   clearTimeout(longPressTimer.current);
 
                   const distanceX = touchCurrentX.current - touchStartX.current;
+
                   const distanceY = touchCurrentY.current - touchStartY.current;
 
-                  if (Math.abs(distanceY) > Math.abs(distanceX)) {
+                  if (Math.abs(distanceY) > 15) {
+                    setSwipingMessageId(null);
+                    setSwipeX(0);
                     return;
                   }
 
-                  if (distanceX > 0 && distanceX < 80) {
+                  if (
+                    distanceX > 30 &&
+                    Math.abs(distanceX) > Math.abs(distanceY) * 2
+                  ) {
                     setSwipingMessageId(message._id);
-                    setSwipeX(distanceX);
+                    setSwipeX(Math.min(distanceX, 80));
                   }
                 }}
                 onPointerUp={() => {
                   clearTimeout(longPressTimer.current);
                 }}
                 onTouchEnd={() => {
-                  const swipeDistance =
-                    touchCurrentX.current - touchStartX.current;
+                  const distanceX = touchCurrentX.current - touchStartX.current;
 
-                  if (swipeDistance > 70) {
+                  const distanceY = touchCurrentY.current - touchStartY.current;
+
+                  const isValidReplySwipe =
+                    distanceX > 70 && Math.abs(distanceY) <= 15;
+
+                  if (isValidReplySwipe) {
                     const messageToReply = messages.find(
                       (msg) => msg._id === message._id,
                     );
