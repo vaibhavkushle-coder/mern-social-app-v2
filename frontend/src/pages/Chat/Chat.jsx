@@ -419,9 +419,9 @@ function Chat() {
     return `Last seen on ${date.toLocaleDateString()} at ${time}`;
   }
   return (
-    <div className="min-h-screen w-full bg-black">
+    <div className="h-[100dvh] w-full bg-black overflow-hidden">
       <div
-        className="w-full max-w-2xl mx-auto h-screen
+        className="w-full max-w-2xl mx-auto h-[100dvh]
      flex flex-col bg-black text-white
      shadow-2xl shadow-black/30"
         style={{
@@ -667,7 +667,7 @@ z-50 overflow-hidden"
           className={`flex-1 overflow-y-auto px-5 py-5
          space-y-2 scroll-smooth  scrollbar-thin
        bg-[linear-gradient(rgba(5,7,15,0.45),rgba(5,7,15,0.45)),url('/images/chat-bg.png.jpeg')]
-        bg-cover bg-center bg-fixed ${editingMessage ? "blur-sm pointer-events-none" : ""}`}
+        bg-cover bg-center  ${editingMessage ? "blur-sm pointer-events-none" : ""}`}
         >
           {loadingMessage ? (
             <div
@@ -1007,8 +1007,8 @@ text-sm shadow-sm"
         )}
 
         <div
-          className=" relative px-4 py-3 border-t border-white/10
-      sticky bottom-0 bg-black backdrop-blur-xl"
+          className="relative shrink-0 px-4 py-3 border-t
+         border-white/10 bg-black/95 backdrop-blur-xl"
         >
           <div
             className="flex items-center gap-1.5 w-full
