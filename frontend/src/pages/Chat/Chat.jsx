@@ -80,6 +80,17 @@ function Chat() {
       const height = window.visualViewport?.height || window.innerHeight;
 
       document.documentElement.style.setProperty("--app-height", `${height}px`);
+
+      requestAnimationFrame(() => {
+        const container = messageContainerRef.current;
+
+        if (container) {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: "smooth",
+          });
+        }
+      });
     };
 
     setAppHeight();
