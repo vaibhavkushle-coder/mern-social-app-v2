@@ -419,10 +419,13 @@ function Chat() {
     return `Last seen on ${date.toLocaleDateString()} at ${time}`;
   }
   return (
-    <div className="h-[100dvh] w-full bg-black overflow-hidden">
+    <div
+      className="fixed inset-0 w-full h-[100dvh]
+     bg-black overflow-hidden overscroll-none"
+    >
       <div
-        className="w-full max-w-2xl mx-auto h-[100dvh]
-     flex flex-col bg-black text-white
+        className="w-full max-w-2xl mx-auto h-full
+     flex flex-col bg-black text-white overflow-hidden
      shadow-2xl shadow-black/30"
         style={{
           scrollbarWidth: "thin",
