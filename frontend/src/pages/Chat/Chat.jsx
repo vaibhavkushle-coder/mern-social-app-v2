@@ -307,7 +307,14 @@ function Chat() {
 
       setText("");
       setReplyMessage(null);
-      inputRef.current?.focus();
+
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+        });
+        inputRef.current?.focus();
+      });
     } catch (error) {
       console.log(error);
       showToast("Failed to send message", "error");
@@ -1132,6 +1139,7 @@ text-sm shadow-sm"
             />
 
             <button
+              onMouseDown={(e) => e.preventDefault()}
               onClick={handleSend}
               disabled={!text.trim() || sending}
               className={`w-10 h-10 shrink-0 rounded-full
