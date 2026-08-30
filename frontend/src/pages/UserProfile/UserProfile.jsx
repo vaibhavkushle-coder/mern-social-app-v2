@@ -72,24 +72,47 @@ function UserProfile() {
     return (
       <>
         <Navbar />
-        <h1 className="text-center mt-20">Loading...</h1>
+        <div
+          className="h-screen bg-[#0b0b1f] overflow-y-auto bg-black"
+          style={{
+            scrollbarWidth: "thin",
+            scrollbarColor: "rgba(139, 92, 246, 0.5) transparent",
+          }}
+        >
+          <Navbar />
+
+          <div className="flex flex-col items-center justify-center mt-50 gap-4">
+            <div className="w-9 h-9 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+
+            <p className="text-sm font-medium text-gray-400 animate-pulse">
+              Loading profile...
+            </p>
+          </div>
+        </div>
       </>
     );
   }
 
   return (
     <>
-      <Navbar />
+      <div
+        className="h-screen bg-[#0b0b1f] overflow-y-auto bg-black"
+        style={{
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgba(139, 92, 246, 0.5) transparent",
+        }}
+      >
+        <Navbar />
 
-      <ProfileContent user={user} posts={posts} isOwnProfile={isOwnProfile}>
-        {!isOwnProfile && (
-          <div className="flex mr-5 mt-6">
-            <FollowButton profileUser={user} setProfileUser={setUser} />
+        <ProfileContent user={user} posts={posts} isOwnProfile={isOwnProfile}>
+          {!isOwnProfile && (
+            <div className="flex mr-5 mt-6">
+              <FollowButton profileUser={user} setProfileUser={setUser} />
 
-            <button
-              type="button"
-              onClick={() => navigate(`/chat/${user._id}`)}
-              className="
+              <button
+                type="button"
+                onClick={() => navigate(`/chat/${user._id}`)}
+                className="
     
     rounded-xl ml-2
     
@@ -116,12 +139,13 @@ function UserProfile() {
     transition-all
     duration-200
   "
-            >
-              Message
-            </button>
-          </div>
-        )}
-      </ProfileContent>
+              >
+                Message
+              </button>
+            </div>
+          )}
+        </ProfileContent>
+      </div>
     </>
   );
 }
