@@ -54,7 +54,7 @@ function Chat() {
   const isOnline = onlineUsers.includes(chatUser?._id);
 
   const typingTimer = useRef(null);
-  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
 
   const touchStartX = useRef(null);
@@ -222,7 +222,13 @@ function Chat() {
   }, [id, user?._id]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = messagesContainerRef.current;
+
+    if (!container) return;
+
+    requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+    });
   }, [messages]);
 
   async function fetchMessages() {
@@ -309,10 +315,6 @@ function Chat() {
       setReplyMessage(null);
 
       requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "end",
-        });
         inputRef.current?.focus();
       });
     } catch (error) {
@@ -693,6 +695,7 @@ z-50 overflow-hidden"
         )}
 
         <div
+          ref={messagesContainerRef}
           className={`flex-1 overflow-y-auto px-5 py-5
          space-y-2 scroll-smooth  scrollbar-thin
        bg-[linear-gradient(rgba(5,7,15,0.45),rgba(5,7,15,0.45)),url('/images/chat-bg.png.jpeg')]
@@ -969,7 +972,7 @@ z-50 overflow-hidden"
               </div>
             ))
           )}
-          <div ref={messagesEndRef} />
+          <div />
         </div>
         {isTyping && (
           <div className="px-4 pb-3">
