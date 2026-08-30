@@ -459,7 +459,7 @@ function Chat() {
     <div
       className="fixed inset-x-0 top-0 w-full
   bg-black overflow-hidden"
-      style={{ height: "var(--app-height)" }}
+      style={{ height: "100dvh" }}
     >
       <div
         className="w-full max-w-2xl mx-auto h-full
