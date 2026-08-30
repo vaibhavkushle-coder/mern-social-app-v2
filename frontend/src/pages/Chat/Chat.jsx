@@ -82,7 +82,7 @@ function Chat() {
       document.documentElement.style.setProperty("--app-height", `${height}px`);
 
       requestAnimationFrame(() => {
-        const container = messageContainerRef.current;
+        const container = messagesContainerRef.current;
 
         if (container) {
           container.scrollTo({
