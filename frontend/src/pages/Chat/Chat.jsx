@@ -96,7 +96,6 @@ function Chat() {
     setAppHeight();
 
     window.visualViewport?.addEventListener("resize", setAppHeight);
-    window.visualViewport?.addEventListener("scroll", setAppHeight);
 
     return () => {
       window.visualViewport?.removeEventListener("resize", setAppHeight);
@@ -459,7 +458,7 @@ function Chat() {
     <div
       className="fixed inset-x-0 top-0 w-full
   bg-black overflow-hidden"
-      style={{ height: "100dvh" }}
+      style={{ height: "var(--app-height)" }}
     >
       <div
         className="w-full max-w-2xl mx-auto h-full
