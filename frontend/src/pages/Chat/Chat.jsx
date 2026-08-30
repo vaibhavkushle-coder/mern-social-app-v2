@@ -856,7 +856,7 @@ z-50 overflow-hidden"
                       : "transform 0.2s ease",
                 }}
               >
-                {swipingMessageId === message._id && swipeX > 20 && (
+                {swipingMessageId === message._id && swipeX > 100 && (
                   <div
                     className="flex items-center justify-center
                 w-10 h-10 rounded-full bg-blue-500 
