@@ -102,6 +102,19 @@ function Chat() {
     };
   }, []);
 
+  useEffect(() => {
+    const body = document.body;
+    const html = document.documentElement;
+
+    body.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+
+    return () => {
+      body.style.overflow = "";
+      html.style.overflow = "";
+    };
+  }, []);
+
   function handleSelectMessage(messageId) {
     setSelectedMessageIds((prev) =>
       prev.includes(messageId)
@@ -457,7 +470,7 @@ function Chat() {
   return (
     <div
       className="fixed inset-x-0 top-0 w-full
-  bg-black overflow-hidden"
+  bg-black overflow-hidden overscroll-none"
       style={{ height: "var(--app-height)" }}
     >
       <div
