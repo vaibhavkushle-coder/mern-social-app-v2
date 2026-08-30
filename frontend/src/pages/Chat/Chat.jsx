@@ -808,7 +808,7 @@ z-50 overflow-hidden"
                   const distanceY = touchCurrentY.current - touchStartY.current;
 
                   const isValidReplySwipe =
-                    distanceX > 70 && Math.abs(distanceY) <= 15;
+                    distanceX > 110 && Math.abs(distanceY) <= 15;
 
                   if (isValidReplySwipe) {
                     const messageToReply = messages.find(
