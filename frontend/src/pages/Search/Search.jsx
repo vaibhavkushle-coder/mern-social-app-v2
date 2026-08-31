@@ -372,7 +372,7 @@ function Search() {
                             bg-gradient-to-r
                             from-purple-600
                             to-violet-500
-                            text-white px-5.5 sm:px-5.5
+                            text-white px-5 sm:px-5.5
                             border-purple-400/20
                             shadow-[0_0_12px_rgba(124,58,237,0.2)]
                             hover:shadow-[0_0_18px_rgba(124,58,237,0.3)]

@@ -6,7 +6,15 @@ async function register(req, res) {
   try {
     const { name, email, password } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    if (!name?.trim() || !email?.trim() || !password) {
+      return res.status(400).json({
+        message: "Name, email and password are required",
+      });
+    }
+
+    const normalizedEmail = email?.trim().toLowerCase();
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
 
     if (existingUser) {
       return res.status(400).json({
@@ -17,8 +25,8 @@ async function register(req, res) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      name,
-      email,
+      name: name.trim(),
+      email: normalizedEmail,
       password: hashedPassword,
     });
 
@@ -47,7 +55,15 @@ async function login(req, res) {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    if (!email?.trim() || !password) {
+      return res.status(400).json({
+        message: "Email and password are required",
+      });
+    }
+
+    const normalizedEmail = email?.trim().toLoweCase();
+
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
       return res.status(400).json({

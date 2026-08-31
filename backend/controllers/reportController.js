@@ -13,7 +13,7 @@ async function reportPost(req, res) {
       });
     }
 
-    if (post.user.toString() === req.user._id) {
+    if (post.user.toString() === req.user._id.toString()) {
       return res.status(400).json({
         message: "You cannot report your own post",
       });

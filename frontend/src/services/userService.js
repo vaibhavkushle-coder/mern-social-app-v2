@@ -21,7 +21,7 @@ async function unfollowUser(userId) {
 }
 
 async function searchUsers(query) {
-  return await api.get(`/user/search?q=${query}`);
+  return await api.get(`/user/search?q=${encodeURIComponent(query)}`);
 }
 
 async function savePost(postId) {

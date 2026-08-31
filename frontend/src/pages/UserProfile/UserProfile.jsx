@@ -71,7 +71,6 @@ function UserProfile() {
   if (!user) {
     return (
       <>
-        <Navbar />
         <div
           className="h-screen bg-[#0b0b1f] overflow-y-auto bg-black"
           style={{

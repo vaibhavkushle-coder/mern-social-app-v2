@@ -295,7 +295,7 @@ async function deleteSelectedMessages(req, res) {
       message: "Message deleted successfully",
     });
   } catch (error) {
-    console.log(erorr);
+    console.log(error);
 
     res.status(500).json({
       message: "Server Error",

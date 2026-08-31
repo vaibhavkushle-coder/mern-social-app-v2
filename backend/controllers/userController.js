@@ -206,8 +206,8 @@ async function editProfile(req, res) {
       user.profilePic = imageUrl;
     }
 
-    if (name) user.name = name;
-    if (bio) user.bio = bio;
+    if (name !== undefined) user.name = name.trim();
+    if (bio !== undefined) user.bio = bio.trim();
 
     await user.save();
 
@@ -239,7 +239,7 @@ async function uploadProfilePic(req, res) {
     console.log(req.file);
 
     if (!req.file) {
-      return res.status(404).json({
+      return res.status(400).json({
         message: "please upload an image",
       });
     }
@@ -442,7 +442,7 @@ async function unsavePost(req, res) {
     await user.save();
 
     res.status(200).json({
-      message: "Server Error",
+      message: "Post unsaved successfully",
     });
   } catch (error) {
     console.log(error);
@@ -455,7 +455,7 @@ async function unsavePost(req, res) {
 
 async function getSuggestedUsers(req, res) {
   try {
-    const currentUser = await User.findById(req.user._id);
+    const currentUser = await User.findById(req.user._id).select("following");
 
     if (!currentUser) {
       return res.status(404).json({
@@ -463,17 +463,15 @@ async function getSuggestedUsers(req, res) {
       });
     }
 
-    if (currentUser.following.length === 0) {
-      return res.status(200).json({
-        suggestedUsers: [],
-      });
+    let suggestedUserIds = [];
+
+    if (currentUser.following.length > 0) {
+      const followingUsers = await User.find({
+        _id: { $in: currentUser.following },
+      }).select("following");
+
+      suggestedUserIds = followingUsers.flatMap((user) => user.following);
     }
-
-    const followingUsers = await User.find({
-      _id: { $in: currentUser.following },
-    }).select("following");
-
-    const suggestedUserIds = followingUsers.flatMap((user) => user.following);
 
     const filteredSuggestedUserIds = suggestedUserIds.filter(
       (id) =>
@@ -483,19 +481,48 @@ async function getSuggestedUsers(req, res) {
         ),
     );
 
-    const suggestedUsers = await User.find({
-      _id: { $in: filteredSuggestedUserIds },
-    })
-      .select("name profilePic bio")
-      .limit(5);
+    let suggestedUsers = [];
 
-    res.status(200).json({
+    if (filteredSuggestedUserIds.length > 0) {
+      suggestedUsers = await User.find({
+        _id: { $in: filteredSuggestedUserIds },
+      })
+        .select("name profilePic bio")
+        .limit(5);
+    }
+
+    if (suggestedUsers.length < 5) {
+      const existingIds = [
+        req.user._id,
+        ...currentUser.following,
+        ...suggestedUsers.map((user) => user._id),
+      ];
+
+      console.log("Current user:", req.user._id);
+      console.log("Existing IDs:", existingIds);
+
+      const allUsers = await User.find({}).select("_id name");
+
+      console.log("All users:", allUsers);
+
+      const fallbackUsers = await User.find({
+        _id: { $nin: existingIds },
+      })
+        .select("name profilePic bio")
+        .limit(5 - suggestedUsers.length);
+
+      console.log("Fallback users:", fallbackUsers);
+
+      suggestedUsers = [...suggestedUsers, ...fallbackUsers];
+    }
+
+    return res.status(200).json({
       suggestedUsers,
     });
   } catch (error) {
     console.log(error);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server Error",
     });
   }

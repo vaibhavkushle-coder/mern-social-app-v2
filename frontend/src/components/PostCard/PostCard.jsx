@@ -118,7 +118,7 @@ function PostCard({
 
   function handleDoubleClick() {
     if (likeAnimationRef.current) {
-      likeAnimationRef.current.classList.remove("hert-animation");
+      likeAnimationRef.current.classList.remove("heart-animation");
 
       void likeAnimationRef.current.offsetWidth;
 

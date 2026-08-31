@@ -89,7 +89,7 @@ async function getPostById(req, res) {
     console.log(error);
 
     res.status(500).json({
-      message: "Server Errro",
+      message: "Server Error",
     });
   }
 }
