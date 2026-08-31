@@ -582,18 +582,19 @@ function Chat() {
               </button>
             )}
 
-            {selectedMessageIds.length === 1 && (
-              <button
-                onClick={handleReplySelectedMessage}
-                className="w-9 h-9 rounded-full
+            {selectedMessageIds.length === 1 &&
+              !selectedMessage?.isDeletedForEveryone && (
+                <button
+                  onClick={handleReplySelectedMessage}
+                  className="w-9 h-9 rounded-full
               flex items-center justify-center
               text-blue-600 hover:bg-blue-50 
               active:scale-95 transition-all duration-200"
-                title="Reply"
-              >
-                <FiCornerUpLeft size={20} />
-              </button>
-            )}
+                  title="Reply"
+                >
+                  <FiCornerUpLeft size={20} />
+                </button>
+              )}
 
             <div className="flex gap-4">
               {selectedMessageIds.length > 0 && (
@@ -814,12 +815,10 @@ z-50 overflow-hidden"
                   const absX = Math.abs(distanceX);
                   const absY = Math.abs(distanceY);
 
-                  // Reply only when:
-                  // 1. Right swipe
-                  // 2. At least 110px
-                  // 3. Horizontal movement clearly dominates vertical movement
                   const isValidReplySwipe =
-                    distanceX > 110 && absX > absY * 1.5;
+                    !message.isDeletedForEveryone &&
+                    distanceX > 110 &&
+                    absX > absY * 1.5;
 
                   if (isValidReplySwipe) {
                     const messageToReply = messages.find(
@@ -869,19 +868,21 @@ z-50 overflow-hidden"
                       : "transform 0.2s ease",
                 }}
               >
-                {swipingMessageId === message._id && swipeX > 60 && (
-                  <div
-                    className="flex items-center justify-center
+                {!message.isDeletedForEveryone &&
+                  swipingMessageId === message._id &&
+                  swipeX > 60 && (
+                    <div
+                      className="flex items-center justify-center
       w-10 h-10 shrink-0
       rounded-full
       bg-violet-600/90
       text-white
       shadow-lg shadow-violet-500/30
       animate-pulse"
-                  >
-                    <FiCornerUpLeft size={19} />
-                  </div>
-                )}
+                    >
+                      <FiCornerUpLeft size={19} />
+                    </div>
+                  )}
                 <div
                   className={`w-full flex flex-col 
                 ${
