@@ -2,10 +2,12 @@ import { useState } from "react";
 import { followUser } from "../../services/userService";
 import { useUser } from "../../hooks/useUser";
 import { useNavigate } from "react-router-dom";
+import { useHome } from "../../hooks/useHome";
 
 function SuggestedUsers({ users = [], onFollow }) {
   const [loadingUsers, setLoadingUsersId] = useState(null);
 
+  const { fetchSuggestedUsers } = useHome();
   const { fetchUser } = useUser();
   const navigate = useNavigate();
 
@@ -19,6 +21,7 @@ function SuggestedUsers({ users = [], onFollow }) {
       console.log("Followed successfully");
 
       await fetchUser();
+      await fetchSuggestedUsers();
     } catch (error) {
       console.log(error);
     } finally {

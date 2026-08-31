@@ -454,6 +454,7 @@ async function unsavePost(req, res) {
 }
 
 async function getSuggestedUsers(req, res) {
+  console.log("🔥 getSuggestedUsers CALLED");
   try {
     const currentUser = await User.findById(req.user._id).select("following");
 

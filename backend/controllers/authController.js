@@ -61,7 +61,7 @@ async function login(req, res) {
       });
     }
 
-    const normalizedEmail = email?.trim().toLoweCase();
+    const normalizedEmail = email?.trim().toLowerCase();
 
     const user = await User.findOne({ email: normalizedEmail });
 
