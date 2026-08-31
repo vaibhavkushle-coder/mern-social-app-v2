@@ -57,10 +57,20 @@ async function followUser(req, res) {
     ).populate("fromUser", "name profilePic");
 
     const io = getIO();
+
     const receiverSocketId = onlineUsers[userToFollow._id.toString()];
 
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("new-notification", populateNotification);
+
+      io.to(receiverSocketId).emit("user-followed", {
+        userId: userToFollow._id,
+        follower: {
+          _id: currentUser._id,
+          name: currentUser.name,
+          profilePic: currentUser.profilePic,
+        },
+      });
     }
 
     res.status(200).json({
@@ -119,6 +129,17 @@ async function unfollowUser(req, res) {
 
     await currentUser.save();
     await userToUnfollow.save();
+
+    const io = getIO();
+
+    const receiverSocketId = onlineUsers[userToUnfollow._id.toString()];
+
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("user-unfollowed", {
+        userId: userToUnfollow._id,
+        followerId: currentUser._id,
+      });
+    }
 
     res.status(200).json({
       message: "User unfollowed successfully",
@@ -347,7 +368,7 @@ async function searchUsers(req, res) {
 
     if (!query) {
       return res.status(200).json({
-        user: [],
+        usersWithFollowStatus: [],
       });
     }
     const currentUser = await User.findById(req.user._id);
@@ -400,6 +421,14 @@ async function savePost(req, res) {
     }
 
     const postId = req.params.id;
+
+    const post = await Post.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({
+        message: "Post not found",
+      });
+    }
 
     const alreadySaved = user.savedPosts.some((id) => id.toString() === postId);
 

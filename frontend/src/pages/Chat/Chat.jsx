@@ -149,13 +149,26 @@ function Chat() {
 
   useEffect(() => {
     async function handleReceiveMessage(message) {
+      const senderId = message.sender?._id?.toString();
+      const receiverId = message.receiver?._id?.toString();
+      const currentUserId = user?._id?.toString();
+      const currentChatUserId = id?.toString();
+
+      const isCurrentConversation =
+        (senderId === currentChatUserId && receiverId === currentUserId) ||
+        (senderId === currentUserId && receiverId === currentChatUserId);
+
+      if (!isCurrentConversation) {
+        return;
+      }
+
       setMessages((prev) => [...prev, message]);
 
-      if (message.sender._id === id) {
-        await markMessageAsSeen(id);
+      if (senderId === currentChatUserId) {
+        await markMessageAsSeen(currentChatUserId);
 
         socket.emit("message-seen", {
-          senderId: id,
+          senderId: currentChatUserId,
         });
       }
     }
@@ -389,7 +402,18 @@ function Chat() {
   const canDeleteForEveryone = selectedMessageIds.every((messageId) => {
     const message = messages.find((msg) => msg._id === messageId);
 
-    return message?.sender?._id === user?._id;
+    if (!message) return false;
+
+    const isMyMessage =
+      message.sender?._id?.toString() === user?._id?.toString();
+
+    const oneHour = 60 * 60 * 1000;
+
+    const messageAge = Date.now() - new Date(message.createdAt).getTime();
+
+    const isWithinOneHour = messageAge <= oneHour;
+
+    return isMyMessage && isWithinOneHour;
   });
 
   async function handleDeleteForEveryone() {

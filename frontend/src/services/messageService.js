@@ -16,14 +16,6 @@ async function getConversations() {
   return await api.get("/message/conversations");
 }
 
-async function deleteSelectedMessages(messageIds) {
-  return await api.delete("/message/deleteMessage", {
-    data: {
-      messageIds,
-    },
-  });
-}
-
 async function deleteConversation(userId) {
   return await api.delete(`/message/conversation/${userId}`);
 }
@@ -44,7 +36,6 @@ export {
   getMessages,
   markMessageAsSeen,
   getConversations,
-  deleteSelectedMessages,
   deleteConversation,
   deleteMessageForMe,
   deleteMessageForEveryone,

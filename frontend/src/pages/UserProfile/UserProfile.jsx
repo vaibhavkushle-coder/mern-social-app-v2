@@ -62,10 +62,30 @@ function UserProfile() {
       });
     }
 
+    function handleUserFollowed(data) {
+      console.log("USER FOLLOWED EVENT RECEIVED:", data);
+
+      setUser((prev) => {
+        if (!prev) return prev;
+
+        if (prev._id !== data.userId) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          followers: [...prev.followers, data.follower],
+        };
+      });
+    }
+
+    socket.on("user-followed", handleUserFollowed);
+
     socket.on("user-unfollowed", handleUserUnfollowed);
 
     return () => {
       socket.off("user-unfollowed", handleUserUnfollowed);
+      socket.off("user-followed", handleUserFollowed);
     };
   }, [socket]);
   if (!user) {

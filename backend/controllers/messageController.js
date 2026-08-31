@@ -1,6 +1,8 @@
 const Message = require("../models/Message");
 const { getIO, onlineUsers } = require("../socket");
 const Conversation = require("../models/Conversation");
+const User = require("../models/User");
+const Post = require("../models/Post");
 
 async function sendMessage(req, res) {
   try {
@@ -12,8 +14,28 @@ async function sendMessage(req, res) {
       });
     }
 
+    if (text && text.trim().length > 5000) {
+      return res.status(400).json({
+        message: "Message is too long",
+      });
+    }
+
     const senderId = req.user._id;
     const receiverId = req.params.id;
+
+    if (senderId.toString() === receiverId.toString()) {
+      return res.status(400).json({
+        message: "You cannot send a message to yourself",
+      });
+    }
+
+    const receiver = await User.findById(receiverId);
+
+    if (!receiver) {
+      return res.status(404).json({
+        message: "Receiver not found",
+      });
+    }
 
     let conversation = await Conversation.findOne({
       participants: { $all: [senderId, receiverId] },
@@ -23,6 +45,34 @@ async function sendMessage(req, res) {
       conversation = await Conversation.create({
         participants: [senderId, receiverId],
       });
+    }
+
+    if (replyTo) {
+      const replyMessage = await Message.findById(replyTo);
+
+      if (!replyMessage) {
+        return res.status(404).json({
+          message: "Reply message not found",
+        });
+      }
+
+      if (
+        replyMessage.conversation.toString() !== conversation._id.toString()
+      ) {
+        return res.status(403).json({
+          message: "Invalid reply message",
+        });
+      }
+    }
+
+    if (post) {
+      const sharedPost = await Post.findById(post);
+
+      if (!sharedPost) {
+        return res.status(404).json({
+          message: "Post not found",
+        });
+      }
     }
 
     const message = await Message.create({
@@ -281,28 +331,6 @@ async function deleteConversation(req, res) {
   }
 }
 
-async function deleteSelectedMessages(req, res) {
-  try {
-    const currentUserId = req.user._id;
-    const { messageIds } = req.body;
-
-    await Message.deleteMany({
-      _id: { $in: messageIds },
-      $or: [{ sender: currentUserId }, { receiver: currentUserId }],
-    });
-
-    res.status(200).json({
-      message: "Message deleted successfully",
-    });
-  } catch (error) {
-    console.log(error);
-
-    res.status(500).json({
-      message: "Server Error",
-    });
-  }
-}
-
 async function deleteMessageForMe(req, res) {
   try {
     const messageId = req.params.id;
@@ -373,6 +401,15 @@ async function deleteMessageForEveryone(req, res) {
     if (message.isDeletedForEveryone) {
       return res.status(400).json({
         message: "Message already deleted for everyone",
+      });
+    }
+
+    const oneHour = 60 * 60 * 1000;
+    const messageAge = Date.now() - new Date(message.createdAt).getTime();
+
+    if (messageAge > oneHour) {
+      return res.status(400).json({
+        message: "Message can only be deleted for everyone within 1 hour",
       });
     }
 
@@ -470,7 +507,7 @@ module.exports = {
   getMessages,
   markMessagesAsSeen,
   getConversations,
-  deleteSelectedMessages,
+
   deleteConversation,
   deleteMessageForMe,
   deleteMessageForEveryone,

@@ -102,7 +102,14 @@ function App() {
           }
         />
 
-        <Route path="/search" element={<Search />} />
+        <Route
+          path="/search"
+          element={
+            <ProtectedRoute>
+              <Search />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
       <Toast />
     </>
