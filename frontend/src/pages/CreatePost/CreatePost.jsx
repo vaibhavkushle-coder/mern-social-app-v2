@@ -19,10 +19,6 @@ function CreatePost() {
   const fileInputRef = useRef(null);
   const { fetchPosts } = useHome();
 
-  useEffect(() => {
-    captionRef.current?.focus();
-  }, []);
-
   async function handleSubmit(e) {
     e.preventDefault();
 
