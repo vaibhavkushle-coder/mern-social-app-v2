@@ -26,14 +26,14 @@ function FollowButton({ profileUser, setProfileUser }) {
 
         setCurrentUser((prev) => ({
           ...prev,
-          following: prev.following.filter(
+          following: (prev.following || []).filter(
             (user) => user._id !== profileUser._id,
           ),
         }));
 
         setProfileUser((prev) => ({
           ...prev,
-          followers: prev.followers.filter(
+          followers: (prev.followers || []).filter(
             (user) => user._id !== currentUser._id,
           ),
         }));
@@ -45,12 +45,12 @@ function FollowButton({ profileUser, setProfileUser }) {
 
         setCurrentUser((prev) => ({
           ...prev,
-          following: [...prev.following, profileUser],
+          following: [...(prev.following || []), profileUser],
         }));
 
         setProfileUser((prev) => ({
           ...prev,
-          followers: [...prev.followers, currentUser],
+          followers: [...(prev.followers || []), currentUser],
         }));
         showToast("User followed successfully", "success");
       }
