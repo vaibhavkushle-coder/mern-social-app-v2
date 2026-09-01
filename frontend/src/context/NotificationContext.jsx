@@ -3,7 +3,7 @@ import {
   markAllAsRead,
   deleteSelectedNotifications,
 } from "../services/notificationService";
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import { useSocket } from "../hooks/useSocket";
 import { useUser } from "../hooks/useUser";
 
@@ -11,12 +11,54 @@ export const NotificationContext = createContext();
 
 export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
+  const notificationsRequestRef = useRef(null);
+  const currentUserIdRef = useRef(null);
 
   const { socket } = useSocket();
   const { user } = useUser();
+  const currentUserId = user?._id?.toString() || null;
+
+  currentUserIdRef.current = currentUserId;
+
+  const fetchNotifications = useCallback(async () => {
+    const requestUserId = currentUserIdRef.current;
+
+    if (!requestUserId) return;
+
+    if (notificationsRequestRef.current?.userId === requestUserId) {
+      return notificationsRequestRef.current.promise;
+    }
+
+    const request = getNotifications()
+      .then((response) => {
+        if (currentUserIdRef.current === requestUserId) {
+          setNotifications(response.data.notifications);
+        }
+
+        return response;
+      })
+      .catch((error) => {
+        console.log(error);
+        throw error;
+      })
+      .finally(() => {
+        if (notificationsRequestRef.current?.promise === request) {
+          notificationsRequestRef.current = null;
+        }
+      });
+
+    notificationsRequestRef.current = {
+      userId: requestUserId,
+      promise: request,
+    };
+
+    return request;
+  }, []);
 
   useEffect(() => {
     function handleNewNotification(notification) {
+      if (!currentUserIdRef.current) return;
+
       setNotifications((prev) => [notification, ...prev]);
     }
     socket.on("new-notification", handleNewNotification);
@@ -27,20 +69,12 @@ export function NotificationProvider({ children }) {
   }, [socket]);
 
   useEffect(() => {
-    if (user) {
-      fetchNotifications();
-    }
-  }, [user]);
+    setNotifications([]);
 
-  async function fetchNotifications() {
-    try {
-      const response = await getNotifications();
+    if (!currentUserId) return;
 
-      setNotifications(response.data.notifications);
-    } catch (error) {
-      console.log(error);
-    }
-  }
+    fetchNotifications().catch(() => {});
+  }, [currentUserId, fetchNotifications]);
 
   async function readAllNotifications() {
     try {

@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useCallback, useRef } from "react";
 import {
   getUserProfile,
   editProfile as editProfileService,
@@ -8,19 +8,45 @@ export const UserContext = createContext();
 
 export function UserProvider({ children }) {
   const [user, setUser] = useState(null);
+  const userRequestRef = useRef(null);
 
-  useEffect(() => {
-    fetchUser();
+  const fetchUser = useCallback(async () => {
+    if (userRequestRef.current) {
+      return userRequestRef.current;
+    }
+
+    const token = localStorage.getItem("token");
+
+    if (!token) return;
+
+    const request = getUserProfile()
+      .then((response) => {
+        if (localStorage.getItem("token") === token) {
+          setUser(response.data.user);
+        }
+
+        return response;
+      })
+      .catch((error) => {
+        console.log(error);
+        throw error;
+      })
+      .finally(() => {
+        if (userRequestRef.current === request) {
+          userRequestRef.current = null;
+        }
+      });
+
+    userRequestRef.current = request;
+
+    return request;
   }, []);
 
-  async function fetchUser() {
-    try {
-      const response = await getUserProfile();
-      setUser(response.data.user);
-    } catch (error) {
-      console.log(error);
-    }
-  }
+  useEffect(() => {
+    if (!localStorage.getItem("token")) return;
+
+    fetchUser().catch(() => {});
+  }, [fetchUser]);
 
   async function editProfile(formData) {
     try {

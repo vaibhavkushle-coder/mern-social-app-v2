@@ -1,11 +1,8 @@
 import { NavLink } from "react-router-dom";
-import { useEffect, useState } from "react";
 
 import { useNotification } from "../../hooks/useNotification";
 import { useUser } from "../../hooks/useUser";
-import { useSocket } from "../../hooks/useSocket";
-
-import { getConversations } from "../../services/messageService";
+import { useConversation } from "../../hooks/useConversation";
 
 import {
   FiHome,
@@ -17,46 +14,14 @@ import {
 } from "react-icons/fi";
 
 function Navbar() {
-  const [messageUnreadCount, setMessageUnreadCount] = useState(0);
-
   const { user } = useUser();
-  const { socket } = useSocket();
   const { notifications } = useNotification();
+  const { conversations } = useConversation();
 
-  useEffect(() => {
-    function handleReceiveMessage(message) {
-      if (message.receiver?._id !== user?._id) {
-        return;
-      }
-
-      setMessageUnreadCount((prev) => prev + 1);
-    }
-
-    socket.on("receive-message", handleReceiveMessage);
-
-    return () => {
-      socket.off("receive-message", handleReceiveMessage);
-    };
-  }, [socket, user?._id]);
-
-  useEffect(() => {
-    async function fetchMessageUnreadCount() {
-      try {
-        const response = await getConversations();
-
-        const totalUnread = response.data.conversations.reduce(
-          (total, conversation) => total + (conversation.unreadCount || 0),
-          0,
-        );
-
-        setMessageUnreadCount(totalUnread);
-      } catch (error) {
-        console.log(error);
-      }
-    }
-
-    fetchMessageUnreadCount();
-  }, []);
+  const messageUnreadCount = conversations.reduce(
+    (total, conversation) => total + (conversation.unreadCount || 0),
+    0,
+  );
 
   const unreadNotificationCount = notifications.filter(
     (notification) => !notification.isRead,
