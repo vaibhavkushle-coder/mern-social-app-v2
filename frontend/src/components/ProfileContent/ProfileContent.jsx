@@ -9,7 +9,6 @@ import {
   FiArrowLeft,
 } from "react-icons/fi";
 import { useSocket } from "../../hooks/useSocket";
-import { useUser } from "../../hooks/useUser";
 import { unfollowUser, removeFollower } from "../../services/userService";
 import { useToast } from "../../hooks/useToast";
 
@@ -21,13 +20,33 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
   const [removingFollowerId, setRemovingFollowerId] = useState(null);
 
   const { socket } = useSocket();
-  const { fetchUser } = useUser();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
   const followers = user?.followers || [];
   const following = user?.following || [];
   const userPosts = posts || [];
+
+  useEffect(() => {
+    if (!socket || !user?._id) return;
+
+    const profileUserId = user._id.toString();
+
+    function joinProfileRoom() {
+      socket.emit("join-profile", profileUserId);
+    }
+
+    if (socket.connected) {
+      joinProfileRoom();
+    }
+
+    socket.on("connect", joinProfileRoom);
+
+    return () => {
+      socket.emit("leave-profile", profileUserId);
+      socket.off("connect", joinProfileRoom);
+    };
+  }, [socket, user?._id]);
 
   useEffect(() => {
     if (!socket || !setUser) return;
@@ -40,9 +59,19 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
           return prev;
         }
 
+        const isAlreadyFollower = (prev.followers || []).some((follower) => {
+          const followerId = follower?._id || follower;
+
+          return followerId.toString() === data.follower._id.toString();
+        });
+
+        if (isAlreadyFollower) {
+          return prev;
+        }
+
         return {
           ...prev,
-          followers: [...prev.followers, data.follower],
+          followers: [...(prev.followers || []), data.follower],
         };
       });
     }
@@ -104,7 +133,6 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
       setUnfollowingUserId(userId);
 
       await unfollowUser(userId);
-      await fetchUser();
 
       showToast("Unfollowed successfully", "success");
     } catch (error) {
@@ -120,7 +148,6 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
       setRemovingFollowerId(userId);
 
       await removeFollower(userId);
-      await fetchUser();
     } catch (error) {
       console.log(error);
 

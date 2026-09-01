@@ -12,7 +12,9 @@ function FollowButton({ profileUser, setProfileUser }) {
   const { fetchSuggestedUsers } = useHome();
 
   const isFollowing = currentUser?.following?.some((user) => {
-    return user._id === profileUser._id;
+    const followingId = user?._id || user;
+
+    return followingId.toString() === profileUser?._id?.toString();
   });
 
   async function handleFollow() {

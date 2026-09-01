@@ -46,6 +46,7 @@ async function followUser(req, res) {
     await currentUser.save();
     await userToFollow.save();
 
+    // Create notification
     const notification = await Notification.create({
       fromUser: currentUser._id,
       toUser: userToFollow._id,
@@ -62,16 +63,16 @@ async function followUser(req, res) {
 
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("new-notification", populateNotification);
-
-      io.to(receiverSocketId).emit("user-followed", {
-        userId: userToFollow._id,
-        follower: {
-          _id: currentUser._id,
-          name: currentUser.name,
-          profilePic: currentUser.profilePic,
-        },
-      });
     }
+
+    io.to(`profile:${userToFollow._id}`).emit("user-followed", {
+      userId: userToFollow._id,
+      follower: {
+        _id: currentUser._id,
+        name: currentUser.name,
+        profilePic: currentUser.profilePic,
+      },
+    });
 
     res.status(200).json({
       message: "User followed successfully",
@@ -130,16 +131,13 @@ async function unfollowUser(req, res) {
     await currentUser.save();
     await userToUnfollow.save();
 
+    // Socket
     const io = getIO();
 
-    const receiverSocketId = onlineUsers[userToUnfollow._id.toString()];
-
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("user-unfollowed", {
-        userId: userToUnfollow._id,
-        followerId: currentUser._id,
-      });
-    }
+    io.to(`profile:${userToUnfollow._id}`).emit("user-unfollowed", {
+      userId: userToUnfollow._id,
+      followerId: currentUser._id,
+    });
 
     res.status(200).json({
       message: "User unfollowed successfully",

@@ -66,6 +66,18 @@ io.on("connection", (socket) => {
 
   console.log("Online Users:", onlineUsers);
 
+  socket.on("join-profile", (profileUserId) => {
+    if (!profileUserId) return;
+
+    socket.join(`profile:${profileUserId}`);
+  });
+
+  socket.on("leave-profile", (profileUserId) => {
+    if (!profileUserId) return;
+
+    socket.leave(`profile:${profileUserId}`);
+  });
+
   socket.on("typing", ({ receiverId }) => {
     const receiverSocketId = onlineUsers[receiverId];
 
