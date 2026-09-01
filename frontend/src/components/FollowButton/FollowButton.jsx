@@ -33,13 +33,6 @@ function FollowButton({ profileUser, setProfileUser }) {
           ),
         }));
 
-        setProfileUser((prev) => ({
-          ...prev,
-          followers: (prev.followers || []).filter(
-            (user) => user._id !== currentUser._id,
-          ),
-        }));
-
         showToast("User Unfollowed successfully", "success");
       } else {
         await followUser(profileUser._id);
@@ -50,10 +43,6 @@ function FollowButton({ profileUser, setProfileUser }) {
           following: [...(prev.following || []), profileUser],
         }));
 
-        setProfileUser((prev) => ({
-          ...prev,
-          followers: [...(prev.followers || []), currentUser],
-        }));
         showToast("User followed successfully", "success");
       }
     } catch (error) {
