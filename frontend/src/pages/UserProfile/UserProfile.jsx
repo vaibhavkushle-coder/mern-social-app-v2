@@ -6,7 +6,6 @@ import ProfileContent from "../../components/ProfileContent/ProfileContent";
 import { useUser } from "../../hooks/useUser";
 import { useNavigate } from "react-router-dom";
 import FollowButton from "../../components/FollowButton/FollowButton";
-import { useSocket } from "../../hooks/useSocket";
 
 function UserProfile() {
   const { id } = useParams();
@@ -15,7 +14,6 @@ function UserProfile() {
   const [posts, setPosts] = useState([]);
 
   const navigate = useNavigate();
-  const { socket } = useSocket();
 
   const { user: currentUser } = useUser();
 
@@ -40,54 +38,6 @@ function UserProfile() {
     fetchProfile();
   }, [id]);
 
-  useEffect(() => {
-    if (!socket) return;
-
-    function handleUserUnfollowed(data) {
-      console.log("USER UNFOLLOWED EVENT RECEIVED:", data);
-
-      setUser((prev) => {
-        if (!prev) return prev;
-
-        if (prev._id !== data.userId) {
-          return prev;
-        }
-
-        return {
-          ...prev,
-          followers: prev.followers.filter(
-            (follower) => follower._id !== data.followerId,
-          ),
-        };
-      });
-    }
-
-    function handleUserFollowed(data) {
-      console.log("USER FOLLOWED EVENT RECEIVED:", data);
-
-      setUser((prev) => {
-        if (!prev) return prev;
-
-        if (prev._id !== data.userId) {
-          return prev;
-        }
-
-        return {
-          ...prev,
-          followers: [...prev.followers, data.follower],
-        };
-      });
-    }
-
-    socket.on("user-followed", handleUserFollowed);
-
-    socket.on("user-unfollowed", handleUserUnfollowed);
-
-    return () => {
-      socket.off("user-unfollowed", handleUserUnfollowed);
-      socket.off("user-followed", handleUserFollowed);
-    };
-  }, [socket]);
   if (!user) {
     return (
       <>
@@ -123,7 +73,12 @@ function UserProfile() {
       >
         <Navbar />
 
-        <ProfileContent user={user} posts={posts} isOwnProfile={isOwnProfile}>
+        <ProfileContent
+          user={user}
+          posts={posts}
+          isOwnProfile={isOwnProfile}
+          setUser={setUser}
+        >
           {!isOwnProfile && (
             <div className="flex mr-5 mt-6">
               <FollowButton profileUser={user} setProfileUser={setUser} />

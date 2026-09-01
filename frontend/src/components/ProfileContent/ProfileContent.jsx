@@ -30,6 +30,51 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
   const userPosts = posts || [];
 
   useEffect(() => {
+    if (!socket || !setUser) return;
+
+    function handleUserFollowed(data) {
+      setUser((prev) => {
+        if (!prev) return prev;
+
+        if (prev._id.toString() !== data.userId.toString()) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          followers: [...prev.followers, data.follower],
+        };
+      });
+    }
+
+    function handleUserUnfollowed(data) {
+      setUser((prev) => {
+        if (!prev) return prev;
+
+        if (prev._id.toString() !== data.userId.toString()) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          followers: prev.followers.filter(
+            (follower) =>
+              follower._id.toString() !== data.followerId.toString(),
+          ),
+        };
+      });
+    }
+
+    socket.on("user-followed", handleUserFollowed);
+    socket.on("user-unfollowed", handleUserUnfollowed);
+
+    return () => {
+      socket.off("user-followed", handleUserFollowed);
+      socket.off("user-unfollowed", handleUserUnfollowed);
+    };
+  }, [socket, setUser]);
+
+  useEffect(() => {
     if (isFollowersOpen || isFollowingOpen) {
       document.body.style.overflow = "hidden";
     } else {
