@@ -6,7 +6,7 @@ const Post = require("../models/Post");
 
 async function sendMessage(req, res) {
   try {
-    const { text, replyTo, post } = req.body;
+    const { text, replyTo, post, clientMessageId } = req.body;
 
     if ((!text || !text.trim()) && !post) {
       return res.status(400).json({
@@ -101,7 +101,10 @@ async function sendMessage(req, res) {
     const io = getIO();
 
     if (receiverSocketId) {
-      io.to(receiverSocketId).emit("receive-message", populatedMessage);
+      io.to(receiverSocketId).emit("receive-message", {
+        ...populatedMessage.toObject(),
+        clientMessageId,
+      });
     }
 
     res.status(200).json({

@@ -202,6 +202,21 @@ function Chat() {
       }
     }
 
+    function handleMessageDelivered({ messageId, clientMessageId }) {
+      setMessages((prev) =>
+        prev.map((message) =>
+          message._id === messageId ||
+          (clientMessageId && message.clientMessageId === clientMessageId)
+            ? {
+                ...message,
+                delivered: true,
+                localStatus: message.seen ? "seen" : "delivered",
+              }
+            : message,
+        ),
+      );
+    }
+
     function handlePostDeleted({ postId }) {
       setMessages((prevMessages) =>
         prevMessages.map((message) => {
@@ -240,6 +255,7 @@ function Chat() {
     socket.on("typing", handleTyping);
     socket.on("stop-typing", handleStopTyping);
     socket.on("message-seen", handleMessageSeen);
+    socket.on("message-delivered", handleMessageDelivered);
     socket.on("message-deleted-for-everyone", handleMessageDeletedForEveryone);
     socket.on("message-edited", handleMessageEdited);
 
@@ -248,6 +264,7 @@ function Chat() {
       socket.off("typing", handleTyping);
       socket.off("stop-typing", handleStopTyping);
       socket.off("message-seen", handleMessageSeen);
+      socket.off("message-delivered", handleMessageDelivered);
       socket.off("post-deleted", handlePostDeleted);
       socket.off(
         "message-deleted-for-everyone",
@@ -273,7 +290,19 @@ function Chat() {
     try {
       setLoadingMessage(true);
       const response = await getMessages(id);
-      setMessages(response.data.messages);
+      setMessages((prev) => {
+        const serverMessageIds = new Set(
+          response.data.messages.map((message) => message._id),
+        );
+        const localMessages = prev.filter(
+          (message) =>
+            message.clientMessageId &&
+            !serverMessageIds.has(message._id) &&
+            message.receiver?._id?.toString() === id?.toString(),
+        );
+
+        return [...response.data.messages, ...localMessages];
+      });
     } catch (error) {
       console.log(error);
     } finally {
@@ -282,14 +311,15 @@ function Chat() {
   }
 
   async function handleSend() {
-    try {
-      if (!text.trim() || sending) {
-        return;
-      }
+    if (!text.trim()) {
+      return;
+    }
 
-      setSending(true);
+    if (editingMessage) {
+      try {
+        if (sending) return;
 
-      if (editingMessage) {
+        setSending(true);
         const response = await editMessage(editingMessage._id, text);
 
         setMessages((prev) =>
@@ -305,33 +335,55 @@ function Chat() {
 
         inputRef.current?.focus();
         showToast("Edited successfully", "success");
-
-        return;
+      } catch (error) {
+        console.log(error);
+        showToast("Failed to edit message", "error");
+      } finally {
+        setSending(false);
       }
 
-      const response = await sendMessage(
-        id,
-        text,
-        null,
-        replyMessage?._id || null,
-      );
+      return;
+    }
 
-      const newMessage = response.data.message;
+    const clientMessageId = crypto.randomUUID();
+    const temporaryMessageId = `temp:${clientMessageId}`;
+    const createdAt = new Date().toISOString();
+    const messageText = text.trim();
+    const replyTo = replyMessage?._id || null;
+    const optimisticMessage = {
+      _id: temporaryMessageId,
+      clientMessageId,
+      sender: user,
+      receiver: chatUser || { _id: id },
+      text: messageText,
+      replyTo: replyMessage,
+      post: null,
+      seen: false,
+      delivered: false,
+      localStatus: "sending",
+      createdAt,
+    };
 
-      setMessages((prev) => [...prev, response.data.message]);
-
+    function updateConversation(message) {
       setConversations((prev) => {
         const existingConversation = prev.find(
           (conversation) => conversation.user._id === id,
         );
 
         if (existingConversation) {
+          const existingTime = new Date(existingConversation.lastMessageTime);
+          const messageTime = new Date(message.createdAt);
+
+          if (existingTime > messageTime) {
+            return prev;
+          }
+
           return [
             {
               ...existingConversation,
-              lastMessage: newMessage.text,
-              lastMessageTime: newMessage.createdAt,
-              lastMessageId: newMessage._id,
+              lastMessage: message.text,
+              lastMessageTime: message.createdAt,
+              lastMessageId: message._id,
             },
             ...prev.filter((conversation) => conversation.user._id !== id),
           ];
@@ -340,26 +392,65 @@ function Chat() {
         return [
           {
             user: chatUser,
-            lastMessage: newMessage.text,
-            lastMessageTime: newMessage.createdAt,
-            lastMessageId: newMessage._id,
+            lastMessage: message.text,
+            lastMessageTime: message.createdAt,
+            lastMessageId: message._id,
             unreadCount: 0,
           },
           ...prev,
         ];
       });
+    }
 
-      setText("");
-      setReplyMessage(null);
+    setMessages((prev) => [...prev, optimisticMessage]);
+    updateConversation(optimisticMessage);
+    setText("");
+    setReplyMessage(null);
+    socket.emit("stop-typing", { receiverId: id });
 
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+
+    try {
+      const response = await sendMessage(
+        id,
+        messageText,
+        null,
+        replyTo,
+        clientMessageId,
+      );
+
+      const newMessage = response.data.message;
+
+      setMessages((prev) =>
+        prev.map((message) =>
+          message._id === temporaryMessageId
+            ? {
+                ...newMessage,
+                clientMessageId,
+                delivered: message.delivered || newMessage.delivered,
+                seen: message.seen || newMessage.seen,
+                localStatus: message.seen
+                  ? "seen"
+                  : message.delivered || newMessage.delivered
+                    ? "delivered"
+                    : "sent",
+              }
+            : message,
+        ),
+      );
+      updateConversation(newMessage);
     } catch (error) {
       console.log(error);
+      setMessages((prev) =>
+        prev.map((message) =>
+          message._id === temporaryMessageId
+            ? { ...message, localStatus: "failed" }
+            : message,
+        ),
+      );
       showToast("Failed to send message", "error");
-    } finally {
-      setSending(false);
     }
   }
 
@@ -1038,9 +1129,24 @@ z-50 overflow-hidden"
                       {message.sender._id === user?._id && (
                         <span
                           className={`text-[11px]
-      ${message.seen ? "text-blue-400" : "text-gray-400"}`}
+      ${
+        message.seen || message.localStatus === "seen"
+          ? "text-blue-400"
+          : message.localStatus === "failed"
+            ? "text-red-400"
+            : "text-gray-400"
+      }`}
                         >
-                          {message.seen ? "✓✓" : "✓"}
+                          {message.localStatus === "sending"
+                            ? "..."
+                            : message.localStatus === "failed"
+                              ? "!"
+                              : message.seen || message.localStatus === "seen"
+                                ? "✓✓"
+                                : message.delivered ||
+                                    message.localStatus === "delivered"
+                                  ? "✓✓"
+                                  : "✓"}
                         </span>
                       )}
                     </div>
@@ -1051,36 +1157,6 @@ z-50 overflow-hidden"
           )}
           <div />
         </div>
-        {isTyping && (
-          <div className="px-4 pb-3">
-            <div
-              className="inline-flex items-center gap-2
-bg-[#1b1e27] text-gray-400
-border border-white/5
-px-4 py-2.5 rounded-2xl
-text-sm shadow-sm"
-            >
-              <span
-                className="w-2 h-2 bg-violet-500
-            rounded-full animate-bounce"
-              ></span>
-
-              <span
-                className="w-2 h-2 bg-violet-500 
-            rounded-full animate-bounce"
-                style={{ animationDelay: "150ms" }}
-              ></span>
-
-              <span
-                className="w-2 h-2 bg-violet-500
-            rounded-full animate-bounce"
-                style={{ animationDelay: "300ms" }}
-              ></span>
-              <span>{chatUser?.name} is typing...</span>
-            </div>
-          </div>
-        )}
-
         {replyMessage && (
           <div className="px-4 pt-3 bg-gray-900 border-t">
             <div
@@ -1116,6 +1192,25 @@ text-sm shadow-sm"
         )}
 
         <div className="relative shrink-0 px-3 mb-2">
+          {isTyping && (
+            <div
+              className="absolute left-5 bottom-full mb-1.5 z-10
+              inline-flex items-center gap-1.5
+              bg-[#1b1e27] text-gray-400 border border-white/10
+              px-3 py-1.5 rounded-full text-xs shadow-lg shadow-black/20"
+            >
+              <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce" />
+              <span
+                className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce"
+                style={{ animationDelay: "150ms" }}
+              />
+              <span
+                className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce"
+                style={{ animationDelay: "300ms" }}
+              />
+              <span>{chatUser?.name} is typing...</span>
+            </div>
+          )}
           <div
             className="flex items-center gap-1.5 w-full
         px-2 py-1 bg-[#1b1e27] border border-white/10
@@ -1218,17 +1313,17 @@ text-sm shadow-sm"
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleSend}
-              disabled={!text.trim() || sending}
+              disabled={!text.trim() || (editingMessage && sending)}
               className={`w-10 h-10 shrink-0 rounded-full
               flex items-center justify-center transition-all
               duration-200
 ${
-  text.trim() && !sending
+  text.trim() && (!editingMessage || !sending)
     ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-500 hover:to-purple-500 hover:shadow-lg hover:shadow-violet-500/30 cursor-pointer active:scale-95"
     : "bg-[#292d38] text-gray-500 cursor-not-allowed"
 }`}
             >
-              {sending ? (
+              {editingMessage && sending ? (
                 <span className="">...</span>
               ) : editingMessage ? (
                 <FiCheck size={21} />

@@ -66,6 +66,11 @@ export function ConversationProvider({ children }) {
         return;
       }
 
+      socket.emit("message-delivered", {
+        messageId: message._id,
+        clientMessageId: message.clientMessageId,
+      });
+
       fetchConversations().catch(() => {});
     }
 

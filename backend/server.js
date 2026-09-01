@@ -6,6 +6,7 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { setIO, onlineUsers } = require("./socket");
 const User = require("./models/User");
+const Message = require("./models/Message");
 
 const dotenv = require("dotenv");
 dotenv.config();
@@ -101,6 +102,34 @@ io.on("connection", (socket) => {
       io.to(senderSocketId).emit("message-seen", {
         receiverId: socket.userId,
       });
+    }
+  });
+
+  socket.on("message-delivered", async ({ messageId, clientMessageId }) => {
+    try {
+      const message = await Message.findById(messageId).select(
+        "sender receiver delivered",
+      );
+
+      if (!message || message.receiver.toString() !== socket.userId) {
+        return;
+      }
+
+      if (!message.delivered) {
+        message.delivered = true;
+        await message.save();
+      }
+
+      const senderSocketId = onlineUsers[message.sender.toString()];
+
+      if (senderSocketId) {
+        io.to(senderSocketId).emit("message-delivered", {
+          messageId: message._id,
+          clientMessageId,
+        });
+      }
+    } catch (error) {
+      console.log(error);
     }
   });
 

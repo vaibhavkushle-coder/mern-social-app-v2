@@ -1,7 +1,18 @@
 import api from "./api";
 
-async function sendMessage(userId, text, postId = null, replyTo = null) {
-  return await api.post(`/message/${userId}`, { text, post: postId, replyTo });
+async function sendMessage(
+  userId,
+  text,
+  postId = null,
+  replyTo = null,
+  clientMessageId = null,
+) {
+  return await api.post(`/message/${userId}`, {
+    text,
+    post: postId,
+    replyTo,
+    clientMessageId,
+  });
 }
 
 async function getMessages(userId) {
