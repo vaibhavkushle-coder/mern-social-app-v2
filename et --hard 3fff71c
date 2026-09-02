@@ -1,0 +1,40 @@
+[33m478c191[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m modify file contexts
+[33m3fff71c[m Modifyed chat ul
+[33me95f9eb[m fixed context fetchings
+[33me461c8e[m fixed createpost caption focus
+[33m9b17928[m fixed follow count essue
+[33mb3f8c3b[m fixed socket essue
+[33mf3df192[m fixed realtime follow following issue
+[33m0d1f82f[m fixed follow unfollow socket
+[33m8b07d03[m fixed issues
+[33m953efae[m Update backend env example and user suggestions
+[33mb187605[m fixed suggested usets
+[33m5651afb[m change reply
+[33m1421968[m fised chat reply system
+[33md270af9[m fixed chat reply in phon
+[33m91ab721[m fixed chat problem
+[33m2e7e1a0[m fixed chat error
+[33m0eaba14[m fised chat reply ul
+[33mf13f8f9[m Fixed reply chat
+[33m7950a2e[m fixed chat scroll esur
+[33mfc85ed5[m fixed chat erro
+[33m7f3f28d[m fixed chat error
+[33m5a59119[m fixed chat error
+[33m8bfea72[m Changed chat ul
+[33m8e982d2[m Updated chat textara ul
+[33m946078c[m fixed chat scroll
+[33m93d1d61[m fixed chat scroll
+[33mec924b2[m fixed chat error
+[33mf27fc51[m fixed chat input
+[33mf7822fb[m fixed chat body
+[33m08abe1b[m fixed phone chat ul
+[33m91dc7d5[m midify chat ul
+[33m4feeab9[m fixed loading statement
+[33m35e831d[m set loading state in follow unfollow
+[33md6b143c[m fixed fetching user and suggestedUsers
+[33ma43bfff[m Fixed api error
+[33m7102588[m Fixed api error
+[33m45a3fd0[m Fix API route
+[33m12d598f[m Fix CORS for production
+[33m32a2f19[m Update backend CORS
+[33m7aaea6d[m initial commit
