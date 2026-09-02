@@ -2,14 +2,27 @@ const Notification = require("../models/Notification");
 
 async function getNotifications(req, res) {
   try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50);
+    const cursor = req.query.cursor;
     const notifications = await Notification.find({
       toUser: req.user._id,
+      ...(cursor ? { createdAt: { $lt: new Date(cursor) } } : {}),
     })
       .populate("fromUser", "name profilePic")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(limit + 1);
+    const hasMore = notifications.length > limit;
+    const page = hasMore ? notifications.slice(0, limit) : notifications;
+    const unreadCount = await Notification.countDocuments({
+      toUser: req.user._id,
+      isRead: false,
+    });
 
     res.status(200).json({
-      notifications,
+      notifications: page,
+      unreadCount,
+      hasMore,
+      nextCursor: hasMore ? page[page.length - 1].createdAt.toISOString() : null,
     });
   } catch (error) {
     console.log(error);

@@ -383,7 +383,7 @@ async function searchUsers(req, res) {
         $regex: query,
         $options: "i",
       },
-    }).select("name profilePic bio");
+    }).select("name profilePic bio").limit(20);
 
     const usersWithFollowStatus = users.map((user) => ({
       ...user.toObject(),

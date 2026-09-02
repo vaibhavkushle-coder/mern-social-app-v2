@@ -1,7 +1,7 @@
 import api from "./api";
 
-async function getNotifications() {
-  return await api.get("/notification");
+async function getNotifications(cursor) {
+  return await api.get("/notification", { params: { limit: 20, cursor } });
 }
 
 async function markAllAsRead() {

@@ -31,6 +31,7 @@ function Search() {
   }, [search]);
 
   useEffect(() => {
+    const controller = new AbortController();
     async function fetchUsers() {
       try {
         if (!debouncedSearch.trim()) {
@@ -41,10 +42,11 @@ function Search() {
         setError("");
 
         setLoading(true);
-        const response = await searchUsers(debouncedSearch);
+        const response = await searchUsers(debouncedSearch, controller.signal);
 
         setUsers(response.data.usersWithFollowStatus);
       } catch (error) {
+        if (error.code === "ERR_CANCELED") return;
         console.log(error);
         setError("Failed to search users");
       } finally {
@@ -52,6 +54,7 @@ function Search() {
       }
     }
     fetchUsers();
+    return () => controller.abort();
   }, [debouncedSearch]);
 
   async function handleFollow(userId) {

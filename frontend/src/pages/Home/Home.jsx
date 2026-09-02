@@ -19,6 +19,7 @@ import { getPostById } from "../../services/postService";
 function Home() {
   const [error, setError] = useState("");
   const [likeLoading, setLikeLoading] = useState({});
+  const [selectedPost, setSelectedPost] = useState(null);
 
   const { showToast } = useToast();
   const location = useLocation();
@@ -36,6 +37,8 @@ function Home() {
     suggestedUsersLoaded,
     fetchPosts,
     fetchSuggestedUsers,
+    loadMorePosts,
+    feedMeta,
   } = useHome();
 
   const selectedPostId = urlpostId || postId;
@@ -58,7 +61,7 @@ function Home() {
         if (selectedPostId) {
           const response = await getPostById(selectedPostId);
 
-          setPosts([response.data.post]);
+          setSelectedPost(response.data.post);
         } else if (!postsLoaded) {
           await fetchPosts();
         }
@@ -69,7 +72,18 @@ function Home() {
     }
 
     loadPosts();
-  }, [selectedPostId, postsLoaded]);
+  }, [selectedPostId, postsLoaded, fetchPosts]);
+
+  useEffect(() => {
+    if (selectedPostId) return;
+    function onScroll(event) {
+      const element = event.currentTarget;
+      if (element.scrollHeight - element.scrollTop - element.clientHeight < 700) loadMorePosts();
+    }
+    const element = document.querySelector("[data-home-scroll]");
+    element?.addEventListener("scroll", onScroll);
+    return () => element?.removeEventListener("scroll", onScroll);
+  }, [selectedPostId, loadMorePosts]);
 
   useEffect(() => {
     if (!selectedPostId || posts.length === 0) return;
@@ -289,7 +303,9 @@ function Home() {
     );
   }
 
-  if (posts.length === 0) {
+  const visiblePosts = selectedPostId && selectedPost ? [selectedPost] : posts;
+
+  if (visiblePosts.length === 0) {
     return (
       <div className="min-h-screen  bg-[#0b0b1f]">
         <Navbar />
@@ -305,6 +321,7 @@ function Home() {
 
   return (
     <div
+      data-home-scroll
       className="h-screen overflow-y-auto bg-black"
       style={{
         scrollbarWidth: "thin",
@@ -314,7 +331,7 @@ function Home() {
       <Navbar />
 
       <div className="max-w-2xl mx-auto py-6 space-y-6 pb-20">
-        {posts.map((post, index) => (
+        {visiblePosts.map((post, index) => (
           <div key={post._id}>
             <PostCard
               post={post}
@@ -335,6 +352,7 @@ function Home() {
             )}
           </div>
         ))}
+        {!selectedPostId && feedMeta.loadingMore && <p className="text-center text-gray-400">Loading more posts...</p>}
       </div>
     </div>
   );

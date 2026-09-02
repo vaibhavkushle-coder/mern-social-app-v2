@@ -24,8 +24,11 @@ function Notification() {
   const {
     notifications,
     readAllNotifications,
+    fetchNotifications,
     deleteSelectedNotificationsFromState,
   } = useNotification();
+
+  useEffect(() => { fetchNotifications().catch(() => {}); }, [fetchNotifications]);
 
   const navigate = useNavigate();
 

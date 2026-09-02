@@ -45,17 +45,27 @@ async function createPost(req, res) {
 
 async function getAllPosts(req, res) {
   try {
-    const posts = await Post.find()
+    const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 30);
+    const cursor = req.query.cursor;
+    const filter = cursor ? { createdAt: { $lt: new Date(cursor) } } : {};
+
+    const posts = await Post.find(filter)
       .populate("user", "name profilePic")
       .populate("likes", "name profilePic")
       .populate({
         path: "comments.user",
         select: "name profilePic",
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(limit + 1);
+
+    const hasMore = posts.length > limit;
+    const page = hasMore ? posts.slice(0, limit) : posts;
 
     res.status(200).json({
-      posts,
+      posts: page,
+      hasMore,
+      nextCursor: hasMore ? page[page.length - 1].createdAt.toISOString() : null,
     });
   } catch (error) {
     console.log(error);
@@ -506,12 +516,22 @@ async function getMyPosts(req, res) {
   try {
     const userId = req.user._id;
 
+    const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 30);
+    const cursor = req.query.cursor;
     const posts = await Post.find({
       user: userId,
-    }).populate("user", "name profilePic");
+      ...(cursor ? { createdAt: { $lt: new Date(cursor) } } : {}),
+    })
+      .populate("user", "name profilePic")
+      .sort({ createdAt: -1 })
+      .limit(limit + 1);
+    const hasMore = posts.length > limit;
+    const page = hasMore ? posts.slice(0, limit) : posts;
 
     res.status(200).json({
-      posts,
+      posts: page,
+      hasMore,
+      nextCursor: hasMore ? page[page.length - 1].createdAt.toISOString() : null,
     });
   } catch (error) {
     console.log(error);

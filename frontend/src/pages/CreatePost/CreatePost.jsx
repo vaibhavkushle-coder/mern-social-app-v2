@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPost } from "../../services/postService";
 import Navbar from "../../components/Navbar/Navbar";
@@ -17,7 +17,7 @@ function CreatePost() {
   const navigate = useNavigate();
   const captionRef = useRef(null);
   const fileInputRef = useRef(null);
-  const { fetchPosts } = useHome();
+  const { upsertPost } = useHome();
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -31,8 +31,8 @@ function CreatePost() {
 
     try {
       setCreatingPost(true);
-      await createPost(formData);
-      await fetchPosts();
+      const response = await createPost(formData);
+      upsertPost(response.data.post, { prepend: true });
 
       setCaption("");
       setImage(null);

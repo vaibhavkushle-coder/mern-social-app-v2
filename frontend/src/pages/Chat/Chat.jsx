@@ -46,7 +46,7 @@ function Chat() {
 
   const { id } = useParams();
 
-  const { fetchConversations, setConversations } = useConversation();
+  const { setConversations, messageCache, setMessageCache } = useConversation();
 
   const { user } = useUser();
   const { showToast } = useToast();
@@ -65,6 +65,9 @@ function Chat() {
 
   const longPressTimer = useRef(null);
   const longPressed = useRef(false);
+  const requestVersion = useRef(0);
+  const olderRequestRef = useRef(false);
+  const [messageMeta, setMessageMeta] = useState({ hasMore: false, nextCursor: null });
 
   const navigate = useNavigate();
 
@@ -134,10 +137,15 @@ function Chat() {
   }
 
   useEffect(() => {
+    const cached = messageCache[id];
+    if (cached?.messages?.length) {
+      setMessages(cached.messages);
+      setMessageMeta(cached.meta);
+      setLoadingMessage(false);
+    } else setMessages([]);
     async function handleChatOpen() {
       await fetchMessages();
       await markMessageAsSeen(id);
-      await fetchConversations();
 
       socket.emit("message-seen", {
         senderId: id,
@@ -286,10 +294,20 @@ function Chat() {
     });
   }, [messages]);
 
+  useEffect(() => {
+    if (!id || messages.length === 0) return;
+    setMessageCache((cache) => ({
+      ...cache,
+      [id]: { messages, meta: messageMeta, fetchedAt: Date.now() },
+    }));
+  }, [id, messages, messageMeta, setMessageCache]);
+
   async function fetchMessages() {
+    const version = ++requestVersion.current;
     try {
-      setLoadingMessage(true);
+      if (!messageCache[id]?.messages?.length) setLoadingMessage(true);
       const response = await getMessages(id);
+      if (version !== requestVersion.current) return;
       setMessages((prev) => {
         const serverMessageIds = new Set(
           response.data.messages.map((message) => message._id),
@@ -301,8 +319,11 @@ function Chat() {
             message.receiver?._id?.toString() === id?.toString(),
         );
 
-        return [...response.data.messages, ...localMessages];
+        const merged = [...response.data.messages, ...localMessages];
+        setMessageCache((cache) => ({ ...cache, [id]: { messages: merged, meta: { hasMore: response.data.hasMore, nextCursor: response.data.nextCursor }, fetchedAt: Date.now() } }));
+        return merged;
       });
+      setMessageMeta({ hasMore: response.data.hasMore, nextCursor: response.data.nextCursor });
     } catch (error) {
       console.log(error);
     } finally {
@@ -452,6 +473,24 @@ function Chat() {
       );
       showToast("Failed to send message", "error");
     }
+  }
+
+  async function loadOlderMessages() {
+    if (!messageMeta.hasMore || !messageMeta.nextCursor || olderRequestRef.current) return;
+    olderRequestRef.current = true;
+    const container = messagesContainerRef.current;
+    const oldHeight = container?.scrollHeight || 0;
+    try {
+    const response = await getMessages(id, messageMeta.nextCursor);
+    setMessages((current) => {
+      const ids = new Set(current.map((message) => message._id));
+      const merged = [...response.data.messages.filter((message) => !ids.has(message._id)), ...current];
+      setMessageCache((cache) => ({ ...cache, [id]: { messages: merged, meta: { hasMore: response.data.hasMore, nextCursor: response.data.nextCursor }, fetchedAt: Date.now() } }));
+      return merged;
+    });
+    setMessageMeta({ hasMore: response.data.hasMore, nextCursor: response.data.nextCursor });
+    requestAnimationFrame(() => { if (container) container.scrollTop = container.scrollHeight - oldHeight; });
+    } finally { olderRequestRef.current = false; }
   }
 
   async function fetchChatUser() {
@@ -825,6 +864,7 @@ z-50 overflow-hidden"
 
         <div
           ref={messagesContainerRef}
+          onScroll={(event) => { if (event.currentTarget.scrollTop < 80) loadOlderMessages().catch(console.log); }}
           className={`flex-1 overflow-y-auto px-5 py-5
          space-y-2 scroll-smooth  scrollbar-thin
        bg-[linear-gradient(rgba(5,7,15,0.45),rgba(5,7,15,0.45)),url('/images/chat-bg.png.jpeg')]

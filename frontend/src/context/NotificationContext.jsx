@@ -11,6 +11,7 @@ export const NotificationContext = createContext();
 
 export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
+  const [notificationMeta, setNotificationMeta] = useState({ nextCursor: null, hasMore: true, loaded: false, loadingMore: false });
   const notificationsRequestRef = useRef(null);
   const currentUserIdRef = useRef(null);
 
@@ -32,7 +33,11 @@ export function NotificationProvider({ children }) {
     const request = getNotifications()
       .then((response) => {
         if (currentUserIdRef.current === requestUserId) {
-          setNotifications(response.data.notifications);
+          setNotifications((prev) => {
+            const map = new Map([...response.data.notifications, ...prev].map((item) => [item._id, item]));
+            return [...map.values()].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          });
+          setNotificationMeta((meta) => ({ ...meta, loaded: true, hasMore: response.data.hasMore, nextCursor: response.data.nextCursor }));
         }
 
         return response;
@@ -73,8 +78,20 @@ export function NotificationProvider({ children }) {
 
     if (!currentUserId) return;
 
-    fetchNotifications().catch(() => {});
   }, [currentUserId, fetchNotifications]);
+
+  async function loadMoreNotifications() {
+    if (!notificationMeta.hasMore || !notificationMeta.nextCursor || notificationMeta.loadingMore) return;
+    setNotificationMeta((meta) => ({ ...meta, loadingMore: true }));
+    try {
+      const response = await getNotifications(notificationMeta.nextCursor);
+      setNotifications((prev) => {
+        const map = new Map([...prev, ...response.data.notifications].map((item) => [item._id, item]));
+        return [...map.values()];
+      });
+      setNotificationMeta((meta) => ({ ...meta, hasMore: response.data.hasMore, nextCursor: response.data.nextCursor }));
+    } finally { setNotificationMeta((meta) => ({ ...meta, loadingMore: false })); }
+  }
 
   async function readAllNotifications() {
     try {
@@ -110,6 +127,8 @@ export function NotificationProvider({ children }) {
         notifications,
         setNotifications,
         fetchNotifications,
+        loadMoreNotifications,
+        notificationMeta,
         readAllNotifications,
         deleteSelectedNotificationsFromState,
       }}

@@ -46,6 +46,8 @@ async function sendMessage(req, res) {
         participants: [senderId, receiverId],
       });
     }
+    conversation.updatedAt = new Date();
+    await conversation.save();
 
     if (replyTo) {
       const replyMessage = await Message.findById(replyTo);
@@ -138,9 +140,12 @@ async function getMessages(req, res) {
       (item) => item.user.toString() === currentUserId.toString(),
     );
 
+    const limit = Math.min(Math.max(Number(req.query.limit) || 40, 1), 100);
+    const before = req.query.before;
     const messages = await Message.find({
       conversation: conversation._id,
       ...(deletedRecord ? { createdAt: { $gt: deletedRecord.deletedAt } } : {}),
+      ...(before ? { createdAt: { $lt: new Date(before) } } : {}),
 
       deleteFor: {
         $not: {
@@ -150,7 +155,8 @@ async function getMessages(req, res) {
         },
       },
     })
-      .sort({ createdAt: 1 })
+      .sort({ createdAt: -1 })
+      .limit(limit + 1)
       .populate("sender", "name profilePic")
       .populate("receiver", "name profilePic")
       .populate("post")
@@ -162,8 +168,12 @@ async function getMessages(req, res) {
         },
       });
 
+    const hasMore = messages.length > limit;
+    const page = (hasMore ? messages.slice(0, limit) : messages).reverse();
     res.status(200).json({
-      messages,
+      messages: page,
+      hasMore,
+      nextCursor: hasMore ? page[0].createdAt.toISOString() : null,
     });
   } catch (error) {
     console.log(error);
@@ -207,81 +217,51 @@ async function markMessagesAsSeen(req, res) {
 async function getConversations(req, res) {
   try {
     const currentUserId = req.user._id;
-
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50);
+    const cursor = req.query.cursor;
     const userConversations = await Conversation.find({
       participants: currentUserId,
-    });
-
-    const conversationIds = userConversations.map(
-      (conversation) => conversation._id,
-    );
-
-    const messages = await Message.find({
-      conversation: { $in: conversationIds },
-      receiver: { $exists: true },
-      $or: [{ sender: currentUserId }, { receiver: currentUserId }],
+      ...(cursor ? { updatedAt: { $lt: new Date(cursor) } } : {}),
     })
-      .sort({ createdAt: -1 })
-      .populate("sender", "name profilePic")
-      .populate("receiver", "name profilePic")
-      .populate("conversation");
+      .sort({ updatedAt: -1 })
+      .limit(limit + 1)
+      .populate("participants", "name profilePic lastSeen");
+    const hasMore = userConversations.length > limit;
+    const page = hasMore ? userConversations.slice(0, limit) : userConversations;
 
-    const conversations = [];
-    const conversationMap = new Map();
-
-    for (const message of messages) {
-      const deletedRecord = message.conversation?.deletedFor?.find(
+    const conversations = (await Promise.all(page.map(async (conversation) => {
+      const deletedRecord = conversation.deletedFor?.find(
         (item) => item.user.toString() === currentUserId.toString(),
       );
-
-      if (deletedRecord && message.createdAt <= deletedRecord.deletedAt) {
-        continue;
-      }
-
-      if (message.isDeletedForEveryone) {
-        continue;
-      }
-
-      if (
-        message.deleteFor?.some(
-          (item) => item.user.toString() === currentUserId.toString(),
-        )
-      ) {
-        continue;
-      }
-      if (!message.sender || !message.receiver) {
-        continue;
-      }
-      const isCurrentUserSender =
-        message.sender._id.toString() === currentUserId.toString();
-
-      const otherUser = isCurrentUserSender ? message.receiver : message.sender;
-
-      const otherUserId = otherUser._id.toString();
-
-      if (!conversationMap.has(otherUserId)) {
-        const conversation = {
-          user: otherUser,
-          lastMessage: message.text,
-          lastMessageTime: message.createdAt,
-          lastMessageId: message._id,
-          unreadCount: 0,
-        };
-
-        conversationMap.set(otherUserId, conversation);
-        conversations.push(conversation);
-      }
-
-      if (
-        message.receiver._id.toString() === currentUserId.toString() &&
-        message.seen === false
-      ) {
-        conversationMap.get(otherUserId).unreadCount++;
-      }
-    }
+      const visible = {
+        conversation: conversation._id,
+        isDeletedForEveryone: false,
+        deleteFor: { $not: { $elemMatch: { user: currentUserId } } },
+        ...(deletedRecord ? { createdAt: { $gt: deletedRecord.deletedAt } } : {}),
+      };
+      const [lastMessage, unreadCount] = await Promise.all([
+        Message.findOne(visible).sort({ createdAt: -1 }),
+        Message.countDocuments({ ...visible, receiver: currentUserId, seen: false }),
+      ]);
+      if (!lastMessage) return null;
+      const otherUser = conversation.participants.find(
+        (participant) => participant._id.toString() !== currentUserId.toString(),
+      );
+      if (!otherUser) return null;
+      return {
+        conversationId: conversation._id,
+        user: otherUser,
+        lastMessage: lastMessage.text,
+        lastMessageTime: lastMessage.createdAt,
+        lastMessageId: lastMessage._id,
+        unreadCount,
+      };
+    }))).filter(Boolean);
 
     res.status(200).json({
       conversations,
+      hasMore,
+      nextCursor: hasMore ? page[page.length - 1].updatedAt.toISOString() : null,
     });
   } catch (error) {
     console.log(error);

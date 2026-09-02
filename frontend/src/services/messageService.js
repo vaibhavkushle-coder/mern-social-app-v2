@@ -15,16 +15,20 @@ async function sendMessage(
   });
 }
 
-async function getMessages(userId) {
-  return await api.get(`/message/${userId}`);
+async function getMessages(userId, before) {
+  return await api.get(`/message/${userId}`, {
+    params: { limit: 40, before },
+  });
 }
 
 async function markMessageAsSeen(userId) {
   return await api.put(`/message/seen/${userId}`, {});
 }
 
-async function getConversations() {
-  return await api.get("/message/conversations");
+async function getConversations(cursor) {
+  return await api.get("/message/conversations", {
+    params: { limit: 20, cursor },
+  });
 }
 
 async function deleteConversation(userId) {

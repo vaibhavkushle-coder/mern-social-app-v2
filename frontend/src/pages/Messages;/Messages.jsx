@@ -19,8 +19,10 @@ function Messages() {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const { conversations, setConversations, fetchConversations } =
+  const { conversations, setConversations, fetchConversations, conversationsLoaded } =
     useConversation();
+
+  useEffect(() => { if (!conversationsLoaded) fetchConversations().catch(() => {}); }, [conversationsLoaded, fetchConversations]);
 
   const navigate = useNavigate();
   const { socket, onlineUsers } = useSocket();

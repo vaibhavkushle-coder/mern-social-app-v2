@@ -7,6 +7,8 @@ export const ConversationContext = createContext();
 
 export function ConversationProvider({ children }) {
   const [conversations, setConversations] = useState([]);
+  const [conversationsLoaded, setConversationsLoaded] = useState(false);
+  const [messageCache, setMessageCache] = useState({});
   const conversationsRequestRef = useRef(null);
   const currentUserIdRef = useRef(null);
   const { user } = useUser();
@@ -27,7 +29,12 @@ export function ConversationProvider({ children }) {
     const request = getConversations()
       .then((response) => {
         if (currentUserIdRef.current === requestUserId) {
-          setConversations(response.data.conversations);
+          setConversations((prev) => {
+            const map = new Map(response.data.conversations.map((item) => [item.user._id, item]));
+            prev.forEach((item) => { if (!map.has(item.user._id)) map.set(item.user._id, item); });
+            return [...map.values()].sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+          });
+          setConversationsLoaded(true);
         }
 
         return response;
@@ -55,7 +62,6 @@ export function ConversationProvider({ children }) {
 
     if (!currentUserId) return;
 
-    fetchConversations().catch(() => {});
   }, [currentUserId, fetchConversations]);
 
   useEffect(() => {
@@ -71,7 +77,13 @@ export function ConversationProvider({ children }) {
         clientMessageId: message.clientMessageId,
       });
 
-      fetchConversations().catch(() => {});
+      setConversations((prev) => {
+        const other = message.sender;
+        const next = { user: other, lastMessage: message.text, lastMessageTime: message.createdAt, lastMessageId: message._id, unreadCount: 1 };
+        const existing = prev.find((item) => item.user._id === other._id);
+        if (existing) next.unreadCount = (existing.unreadCount || 0) + 1;
+        return [next, ...prev.filter((item) => item.user._id !== other._id)];
+      });
     }
 
     socket.on("receive-message", handleReceiveMessage);
@@ -87,6 +99,9 @@ export function ConversationProvider({ children }) {
         conversations,
         setConversations,
         fetchConversations,
+        conversationsLoaded,
+        messageCache,
+        setMessageCache,
       }}
     >
       {children}

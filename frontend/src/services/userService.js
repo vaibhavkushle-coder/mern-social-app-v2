@@ -20,8 +20,8 @@ async function unfollowUser(userId) {
   return await api.post(`/user/unfollow/${userId}`, {});
 }
 
-async function searchUsers(query) {
-  return await api.get(`/user/search?q=${encodeURIComponent(query)}`);
+async function searchUsers(query, signal) {
+  return await api.get(`/user/search?q=${encodeURIComponent(query)}`, { signal });
 }
 
 async function savePost(postId) {

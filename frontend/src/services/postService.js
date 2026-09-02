@@ -1,7 +1,7 @@
 import api from "./api";
 
-async function getAllPosts() {
-  return await api.get("/post/all");
+async function getAllPosts(cursor) {
+  return await api.get("/post/all", { params: { limit: 12, cursor } });
 }
 
 async function createPost(formData) {
@@ -46,8 +46,8 @@ async function editPost(postId, caption) {
   });
 }
 
-async function getMyPosts() {
-  return await api.get("/post/my-posts");
+async function getMyPosts(cursor) {
+  return await api.get("/post/my-posts", { params: { limit: 12, cursor } });
 }
 
 async function getPostById(postId) {
