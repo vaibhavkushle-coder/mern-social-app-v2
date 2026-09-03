@@ -291,9 +291,14 @@ function Notification() {
                       notification.type === "like" ||
                       notification.type === "comment"
                     ) {
+                      const notificationPostId =
+                        notification.post?._id || notification.post;
+
+                      if (!notificationPostId) return;
+
                       navigate("/", {
                         state: {
-                          postId: notification.post._id,
+                          postId: notificationPostId,
                         },
                       });
                     }

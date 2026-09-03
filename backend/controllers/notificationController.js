@@ -9,10 +9,29 @@ async function getNotifications(req, res) {
       ...(cursor ? { createdAt: { $lt: new Date(cursor) } } : {}),
     })
       .populate("fromUser", "name profilePic")
+      .populate("post", "_id")
       .sort({ createdAt: -1 })
       .limit(limit + 1);
+    const staleNotificationIds = notifications
+      .filter(
+        (notification) =>
+          notification.type !== "follow" && !notification.post,
+      )
+      .map((notification) => notification._id);
+
+    if (staleNotificationIds.length > 0) {
+      await Notification.deleteMany({
+        _id: { $in: staleNotificationIds },
+        toUser: req.user._id,
+      });
+    }
+
+    const validNotifications = notifications.filter(
+      (notification) =>
+        notification.type === "follow" || notification.post,
+    );
     const hasMore = notifications.length > limit;
-    const page = hasMore ? notifications.slice(0, limit) : notifications;
+    const page = validNotifications.slice(0, limit);
     const unreadCount = await Notification.countDocuments({
       toUser: req.user._id,
       isRead: false,
@@ -22,7 +41,10 @@ async function getNotifications(req, res) {
       notifications: page,
       unreadCount,
       hasMore,
-      nextCursor: hasMore ? page[page.length - 1].createdAt.toISOString() : null,
+      nextCursor:
+        hasMore && notifications.length > 0
+          ? notifications[Math.min(limit, notifications.length) - 1].createdAt.toISOString()
+          : null,
     });
   } catch (error) {
     console.log(error);

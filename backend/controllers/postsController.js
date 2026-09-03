@@ -6,6 +6,7 @@ const User = require("../models/User");
 const Notification = require("../models/Notification");
 const { getIO, getUserSocketIds } = require("../socket");
 const Message = require("../models/Message");
+const Report = require("../models/Report");
 
 async function createPost(req, res) {
   try {
@@ -106,27 +107,22 @@ async function getPostById(req, res) {
 
 async function likePost(req, res) {
   try {
-    const post = await Post.findById(req.params.id);
-
-    if (!post) {
-      return res.status(404).json({
-        message: "Post not found",
-      });
-    }
-
-    const alreadyLiked = await post.likes.some(
-      (id) => id.toString() === req.user._id.toString(),
+    const post = await Post.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        likes: { $ne: req.user._id },
+      },
+      { $addToSet: { likes: req.user._id } },
+      { new: true },
     );
 
-    if (alreadyLiked) {
-      return res.status(400).json({
-        message: "Post already liked",
+    if (!post) {
+      const postExists = await Post.exists({ _id: req.params.id });
+
+      return res.status(postExists ? 400 : 404).json({
+        message: postExists ? "Post already liked" : "Post not found",
       });
     }
-
-    post.likes.push(req.user._id);
-
-    await post.save();
 
     if (req.user._id.toString() !== post.user.toString()) {
       const notification = await Notification.create({
@@ -170,29 +166,22 @@ async function likePost(req, res) {
 
 async function unlikePost(req, res) {
   try {
-    const post = await Post.findById(req.params.id);
+    const post = await Post.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        likes: req.user._id,
+      },
+      { $pull: { likes: req.user._id } },
+      { new: true },
+    );
 
     if (!post) {
+      const postExists = await Post.exists({ _id: req.params.id });
+
       return res.status(404).json({
-        message: "Post not found",
+        message: postExists ? "Post is not liked" : "Post not found",
       });
     }
-
-    const alreadyLiked = await post.likes.some(
-      (id) => id.toString() === req.user._id.toString(),
-    );
-
-    if (!alreadyLiked) {
-      return res.status(404).json({
-        message: "Post is not liked",
-      });
-    }
-
-    post.likes = post.likes.filter(
-      (id) => id.toString() !== req.user._id.toString(),
-    );
-
-    await post.save();
 
     const updatedPost = await Post.findById(post._id)
       .populate("user", "name profilePic")
@@ -359,9 +348,17 @@ async function deletePost(req, res) {
       });
     }
 
-    await Message.updateMany({ post: post._id }, { $set: { post: null } });
-
     await post.deleteOne();
+
+    await Promise.all([
+      Message.updateMany({ post: post._id }, { $set: { post: null } }),
+      Notification.deleteMany({ post: post._id }),
+      Report.deleteMany({ post: post._id }),
+      User.updateMany(
+        { savedPosts: post._id },
+        { $pull: { savedPosts: post._id } },
+      ),
+    ]);
 
     const io = getIO();
 

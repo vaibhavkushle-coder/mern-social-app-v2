@@ -5,17 +5,10 @@ const cloudinary = require("../config/cloudinary");
 const streamifier = require("streamifier");
 const Notification = require("../models/Notification");
 const { getIO, getUserSocketIds } = require("../socket");
+const mongoose = require("mongoose");
 
 async function followUser(req, res) {
   try {
-    const currentUser = await User.findById(req.user._id);
-
-    if (!currentUser) {
-      return res.status(404).json({
-        message: "Current user not found",
-      });
-    }
-
     const userToFollow = await User.findById(req.params.id);
 
     if (!userToFollow) {
@@ -30,25 +23,48 @@ async function followUser(req, res) {
       });
     }
 
-    const alreadyFollowing = currentUser.following.some(
-      (id) => id.toString() === userToFollow._id.toString(),
-    );
+    const session = await mongoose.startSession();
+    let followed = false;
 
-    if (alreadyFollowing) {
+    try {
+      await session.withTransaction(async () => {
+        followed = false;
+        const currentUserUpdate = await User.updateOne(
+          {
+            _id: req.user._id,
+            following: { $ne: userToFollow._id },
+          },
+          { $addToSet: { following: userToFollow._id } },
+          { session },
+        );
+
+        if (currentUserUpdate.modifiedCount === 0) return;
+
+        const followedUserUpdate = await User.updateOne(
+          { _id: userToFollow._id },
+          { $addToSet: { followers: req.user._id } },
+          { session },
+        );
+
+        if (followedUserUpdate.matchedCount === 0) {
+          throw new Error("User not found during follow");
+        }
+
+        followed = true;
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    if (!followed) {
       return res.status(400).json({
         message: "Already following",
       });
     }
 
-    currentUser.following.push(userToFollow._id);
-    userToFollow.followers.push(currentUser._id);
-
-    await currentUser.save();
-    await userToFollow.save();
-
     // Create notification
     const notification = await Notification.create({
-      fromUser: currentUser._id,
+      fromUser: req.user._id,
       toUser: userToFollow._id,
       type: "follow",
     });
@@ -68,9 +84,9 @@ async function followUser(req, res) {
     io.to(`profile:${userToFollow._id}`).emit("user-followed", {
       userId: userToFollow._id,
       follower: {
-        _id: currentUser._id,
-        name: currentUser.name,
-        profilePic: currentUser.profilePic,
+        _id: req.user._id,
+        name: req.user.name,
+        profilePic: req.user.profilePic,
       },
     });
 
@@ -88,14 +104,6 @@ async function followUser(req, res) {
 
 async function unfollowUser(req, res) {
   try {
-    const currentUser = await User.findById(req.user._id);
-
-    if (!currentUser) {
-      return res.status(404).json({
-        message: "Current user not found",
-      });
-    }
-
     const userToUnfollow = await User.findById(req.params.id);
 
     if (!userToUnfollow) {
@@ -110,26 +118,44 @@ async function unfollowUser(req, res) {
       });
     }
 
-    const isFollowing = currentUser.following.some(
-      (id) => id.toString() === userToUnfollow._id.toString(),
-    );
+    const session = await mongoose.startSession();
+    let unfollowed = false;
 
-    if (!isFollowing) {
+    try {
+      await session.withTransaction(async () => {
+        unfollowed = false;
+        const currentUserUpdate = await User.updateOne(
+          {
+            _id: req.user._id,
+            following: userToUnfollow._id,
+          },
+          { $pull: { following: userToUnfollow._id } },
+          { session },
+        );
+
+        if (currentUserUpdate.modifiedCount === 0) return;
+
+        const unfollowedUserUpdate = await User.updateOne(
+          { _id: userToUnfollow._id },
+          { $pull: { followers: req.user._id } },
+          { session },
+        );
+
+        if (unfollowedUserUpdate.matchedCount === 0) {
+          throw new Error("User not found during unfollow");
+        }
+
+        unfollowed = true;
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    if (!unfollowed) {
       return res.status(400).json({
         message: "User not followed",
       });
     }
-
-    currentUser.following = currentUser.following.filter(
-      (id) => id.toString() !== userToUnfollow._id.toString(),
-    );
-
-    userToUnfollow.followers = userToUnfollow.followers.filter(
-      (id) => id.toString() !== currentUser._id.toString(),
-    );
-
-    await currentUser.save();
-    await userToUnfollow.save();
 
     // Socket
     const io = getIO();
@@ -153,13 +179,6 @@ async function unfollowUser(req, res) {
 
 async function removeFollower(req, res) {
   try {
-    const currentUser = await User.findById(req.user._id);
-
-    if (!currentUser) {
-      return res.status(404).json({
-        message: "Current user not found",
-      });
-    }
     const followerUser = await User.findById(req.params.id);
 
     if (!followerUser) {
@@ -174,26 +193,44 @@ async function removeFollower(req, res) {
       });
     }
 
-    const isFollower = currentUser.followers.some(
-      (id) => id.toString() === followerUser._id.toString(),
-    );
+    const session = await mongoose.startSession();
+    let removed = false;
 
-    if (!isFollower) {
+    try {
+      await session.withTransaction(async () => {
+        removed = false;
+        const currentUserUpdate = await User.updateOne(
+          {
+            _id: req.user._id,
+            followers: followerUser._id,
+          },
+          { $pull: { followers: followerUser._id } },
+          { session },
+        );
+
+        if (currentUserUpdate.modifiedCount === 0) return;
+
+        const followerUpdate = await User.updateOne(
+          { _id: followerUser._id },
+          { $pull: { following: req.user._id } },
+          { session },
+        );
+
+        if (followerUpdate.matchedCount === 0) {
+          throw new Error("Follower user not found during removal");
+        }
+
+        removed = true;
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    if (!removed) {
       return res.status(400).json({
         message: "User is not Your follower",
       });
     }
-
-    currentUser.followers = currentUser.followers.filter(
-      (id) => id.toString() !== followerUser._id.toString(),
-    );
-
-    followerUser.following = followerUser.following.filter(
-      (id) => id.toString() !== currentUser._id.toString(),
-    );
-
-    await currentUser.save();
-    await followerUser.save();
 
     res.status(200).json({
       message: "Follower removed successfully",

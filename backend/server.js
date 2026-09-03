@@ -26,8 +26,10 @@ const postRoutes = require("./routes/postRoutes");
 const notificationRoutes = require("./routes/notificationRouters");
 const messageRoutes = require("./routes/messageRouters");
 const reportRoutes = require("./routes/reportRoutes");
+const { apiLimiter } = require("./middleware/rateLimiters");
 
 const app = express();
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -173,6 +175,7 @@ app.use(
   }),
 );
 
+app.use("/api", apiLimiter);
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/post", postRoutes);

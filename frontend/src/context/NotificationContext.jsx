@@ -66,10 +66,20 @@ export function NotificationProvider({ children }) {
 
       setNotifications((prev) => [notification, ...prev]);
     }
+    function handlePostDeleted({ postId }) {
+      setNotifications((prev) =>
+        prev.filter(
+          (notification) =>
+            (notification.post?._id || notification.post)?.toString() !== postId,
+        ),
+      );
+    }
     socket.on("new-notification", handleNewNotification);
+    socket.on("post-deleted", handlePostDeleted);
 
     return () => {
       socket.off("new-notification", handleNewNotification);
+      socket.off("post-deleted", handlePostDeleted);
     };
   }, [socket]);
 
