@@ -4,7 +4,7 @@ const Post = require("../models/Post");
 const cloudinary = require("../config/cloudinary");
 const streamifier = require("streamifier");
 const Notification = require("../models/Notification");
-const { getIO, onlineUsers } = require("../socket");
+const { getIO, getUserSocketIds } = require("../socket");
 
 async function followUser(req, res) {
   try {
@@ -59,10 +59,10 @@ async function followUser(req, res) {
 
     const io = getIO();
 
-    const receiverSocketId = onlineUsers[userToFollow._id.toString()];
+    const receiverSocketIds = getUserSocketIds(userToFollow._id.toString());
 
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("new-notification", populateNotification);
+    if (receiverSocketIds.length > 0) {
+      io.to(receiverSocketIds).emit("new-notification", populateNotification);
     }
 
     io.to(`profile:${userToFollow._id}`).emit("user-followed", {

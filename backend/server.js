@@ -4,7 +4,13 @@ const { Server } = require("socket.io");
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const { setIO, onlineUsers } = require("./socket");
+const {
+  setIO,
+  addUserSocket,
+  removeUserSocket,
+  getUserSocketIds,
+  getOnlineUserIds,
+} = require("./socket");
 const User = require("./models/User");
 const Message = require("./models/Message");
 
@@ -60,12 +66,14 @@ io.use(async (socket, next) => {
 io.on("connection", (socket) => {
   console.log("✅ User Connected:", socket.id);
 
-  onlineUsers[socket.userId] = socket.id;
+  const becameOnline = addUserSocket(socket.userId, socket.id);
 
-  socket.broadcast.emit("user-online", socket.userId);
-  socket.emit("online-users", Object.keys(onlineUsers));
+  if (becameOnline) {
+    socket.broadcast.emit("user-online", socket.userId);
+  }
+  socket.emit("online-users", getOnlineUserIds());
 
-  console.log("Online Users:", onlineUsers);
+  console.log("Online Users:", getOnlineUserIds());
 
   socket.on("join-profile", (profileUserId) => {
     if (!profileUserId) return;
@@ -80,26 +88,26 @@ io.on("connection", (socket) => {
   });
 
   socket.on("typing", ({ receiverId }) => {
-    const receiverSocketId = onlineUsers[receiverId];
+    const receiverSocketIds = getUserSocketIds(receiverId);
 
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("typing", { senderId: socket.userId });
+    if (receiverSocketIds.length > 0) {
+      io.to(receiverSocketIds).emit("typing", { senderId: socket.userId });
     }
   });
 
   socket.on("stop-typing", ({ receiverId }) => {
-    const receiverSocketId = onlineUsers[receiverId];
+    const receiverSocketIds = getUserSocketIds(receiverId);
 
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("stop-typing", { senderId: socket.userId });
+    if (receiverSocketIds.length > 0) {
+      io.to(receiverSocketIds).emit("stop-typing", { senderId: socket.userId });
     }
   });
 
   socket.on("message-seen", ({ senderId }) => {
-    const senderSocketId = onlineUsers[senderId];
+    const senderSocketIds = getUserSocketIds(senderId);
 
-    if (senderSocketId) {
-      io.to(senderSocketId).emit("message-seen", {
+    if (senderSocketIds.length > 0) {
+      io.to(senderSocketIds).emit("message-seen", {
         receiverId: socket.userId,
       });
     }
@@ -120,10 +128,10 @@ io.on("connection", (socket) => {
         await message.save();
       }
 
-      const senderSocketId = onlineUsers[message.sender.toString()];
+      const senderSocketIds = getUserSocketIds(message.sender.toString());
 
-      if (senderSocketId) {
-        io.to(senderSocketId).emit("message-delivered", {
+      if (senderSocketIds.length > 0) {
+        io.to(senderSocketIds).emit("message-delivered", {
           messageId: message._id,
           clientMessageId,
         });
@@ -137,22 +145,21 @@ io.on("connection", (socket) => {
     console.log("DISCONNECTED uSER:", socket.userId);
 
     if (socket.userId) {
-      const currentSocketId = onlineUsers[socket.userId];
+      const becameOffline = removeUserSocket(socket.userId, socket.id);
 
-      if (currentSocketId === socket.id) {
-        delete onlineUsers[socket.userId];
-
-        await User.findByIdAndUpdate(socket.userId, { lastSeen: new Date() });
+      if (becameOffline) {
+        const lastSeen = new Date();
+        await User.findByIdAndUpdate(socket.userId, { lastSeen });
 
         socket.broadcast.emit("user-offline", {
           userId: socket.userId,
-          lastSeen: new Date().toISOString(),
+          lastSeen: lastSeen.toISOString(),
         });
       }
     }
 
     console.log("❌ User Disconnected");
-    console.log("Online Users:", onlineUsers);
+    console.log("Online Users:", getOnlineUserIds());
   });
 });
 

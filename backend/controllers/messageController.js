@@ -1,8 +1,9 @@
 const Message = require("../models/Message");
-const { getIO, onlineUsers } = require("../socket");
+const { getIO, getUserSocketIds } = require("../socket");
 const Conversation = require("../models/Conversation");
 const User = require("../models/User");
 const Post = require("../models/Post");
+const { getCanonicalConversationPair } = require("../utils/conversationPair");
 
 async function sendMessage(req, res) {
   try {
@@ -37,17 +38,22 @@ async function sendMessage(req, res) {
       });
     }
 
-    let conversation = await Conversation.findOne({
-      participants: { $all: [senderId, receiverId] },
-    });
-
-    if (!conversation) {
-      conversation = await Conversation.create({
-        participants: [senderId, receiverId],
-      });
-    }
-    conversation.updatedAt = new Date();
-    await conversation.save();
+    const pair = getCanonicalConversationPair(senderId, receiverId);
+    const conversation = await Conversation.findOneAndUpdate(
+      {
+        participantA: pair.participantA,
+        participantB: pair.participantB,
+      },
+      {
+        $setOnInsert: {
+          participants: pair.participants,
+          participantA: pair.participantA,
+          participantB: pair.participantB,
+        },
+        $set: { updatedAt: new Date() },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
 
     if (replyTo) {
       const replyMessage = await Message.findById(replyTo);
@@ -98,12 +104,12 @@ async function sendMessage(req, res) {
         },
       });
 
-    const receiverSocketId = onlineUsers[receiverId];
+    const receiverSocketIds = getUserSocketIds(receiverId);
 
     const io = getIO();
 
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("receive-message", {
+    if (receiverSocketIds.length > 0) {
+      io.to(receiverSocketIds).emit("receive-message", {
         ...populatedMessage.toObject(),
         clientMessageId,
       });
@@ -126,8 +132,10 @@ async function getMessages(req, res) {
     const currentUserId = req.user._id;
     const otherUserId = req.params.id;
 
+    const pair = getCanonicalConversationPair(currentUserId, otherUserId);
     const conversation = await Conversation.findOne({
-      participants: { $all: [currentUserId, otherUserId] },
+      participantA: pair.participantA,
+      participantB: pair.participantB,
     });
 
     if (!conversation) {
@@ -277,8 +285,10 @@ async function deleteConversation(req, res) {
     const currentUserId = req.user._id;
     const otherUserId = req.params.id;
 
+    const pair = getCanonicalConversationPair(currentUserId, otherUserId);
     const conversation = await Conversation.findOne({
-      participants: { $all: [currentUserId, otherUserId] },
+      participantA: pair.participantA,
+      participantB: pair.participantB,
     });
 
     if (!conversation) {
@@ -402,17 +412,17 @@ async function deleteMessageForEveryone(req, res) {
 
     const io = getIO();
 
-    const receiverSocketId = onlineUsers[message.receiver.toString()];
-    const senderSocketId = onlineUsers[message.sender.toString()];
+    const receiverSocketIds = getUserSocketIds(message.receiver.toString());
+    const senderSocketIds = getUserSocketIds(message.sender.toString());
 
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("message-deleted-for-everyone", {
+    if (receiverSocketIds.length > 0) {
+      io.to(receiverSocketIds).emit("message-deleted-for-everyone", {
         messageId: message._id,
       });
     }
 
-    if (senderSocketId) {
-      io.to(senderSocketId).emit("message-deleted-for-everyone", {
+    if (senderSocketIds.length > 0) {
+      io.to(senderSocketIds).emit("message-deleted-for-everyone", {
         messageId: message._id,
       });
     }
@@ -464,13 +474,14 @@ async function editMessage(req, res) {
       .populate("receiver", "name profilePic")
       .populate("post");
 
-    const receiverSocketId =
-      onlineUsers[updatedMessage.receiver._id.toString()];
+    const receiverSocketIds = getUserSocketIds(
+      updatedMessage.receiver._id.toString(),
+    );
 
     const io = getIO();
 
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("message-edited", updatedMessage);
+    if (receiverSocketIds.length > 0) {
+      io.to(receiverSocketIds).emit("message-edited", updatedMessage);
     }
 
     res.status(200).json({

@@ -4,7 +4,7 @@ const streamifier = require("streamifier");
 const Post = require("../models/Post");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
-const { getIO, onlineUsers } = require("../socket");
+const { getIO, getUserSocketIds } = require("../socket");
 const Message = require("../models/Message");
 
 async function createPost(req, res) {
@@ -143,10 +143,10 @@ async function likePost(req, res) {
         .populate("post");
 
       const io = getIO();
-      const receiverSocketId = onlineUsers[post.user.toString()];
+      const receiverSocketIds = getUserSocketIds(post.user.toString());
 
-      if (receiverSocketId) {
-        io.to(receiverSocketId).emit("new-notification", populatedNotification);
+      if (receiverSocketIds.length > 0) {
+        io.to(receiverSocketIds).emit("new-notification", populatedNotification);
       }
     }
 
@@ -250,10 +250,10 @@ async function commentPost(req, res) {
         .populate("post");
 
       const io = getIO();
-      const receiverSocketId = onlineUsers[post.user.toString()];
+      const receiverSocketIds = getUserSocketIds(post.user.toString());
 
-      if (receiverSocketId) {
-        io.to(receiverSocketId).emit("new-notification", populateMessage);
+      if (receiverSocketIds.length > 0) {
+        io.to(receiverSocketIds).emit("new-notification", populateMessage);
       }
     }
 
