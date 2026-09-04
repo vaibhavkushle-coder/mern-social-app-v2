@@ -5,6 +5,20 @@ const User = require("../models/User");
 const Post = require("../models/Post");
 const { getCanonicalConversationPair } = require("../utils/conversationPair");
 
+function populateMessage(messageId) {
+  return Message.findById(messageId)
+    .populate("sender", "name profilePic")
+    .populate("receiver", "name profilePic")
+    .populate("post")
+    .populate({
+      path: "replyTo",
+      populate: {
+        path: "sender",
+        select: "name profilePic",
+      },
+    });
+}
+
 async function sendMessage(req, res) {
   try {
     const { text, replyTo, post, clientMessageId } = req.body;
@@ -21,8 +35,21 @@ async function sendMessage(req, res) {
       });
     }
 
+    if (
+      clientMessageId !== undefined &&
+      clientMessageId !== null &&
+      (typeof clientMessageId !== "string" ||
+        !clientMessageId.trim() ||
+        clientMessageId.trim().length > 100)
+    ) {
+      return res.status(400).json({
+        message: "Invalid client message ID",
+      });
+    }
+
     const senderId = req.user._id;
     const receiverId = req.params.id;
+    const normalizedClientMessageId = clientMessageId?.trim() || null;
 
     if (senderId.toString() === receiverId.toString()) {
       return res.status(400).json({
@@ -36,6 +63,27 @@ async function sendMessage(req, res) {
       return res.status(404).json({
         message: "Receiver not found",
       });
+    }
+
+    if (normalizedClientMessageId) {
+      const existingMessage = await Message.findOne({
+        sender: senderId,
+        clientMessageId: normalizedClientMessageId,
+      });
+
+      if (existingMessage) {
+        if (existingMessage.receiver.toString() !== receiverId.toString()) {
+          return res.status(409).json({
+            message: "Client message ID is already in use",
+          });
+        }
+
+        const populatedMessage = await populateMessage(existingMessage._id);
+
+        return res.status(200).json({
+          message: populatedMessage,
+        });
+      }
     }
 
     const pair = getCanonicalConversationPair(senderId, receiverId);
@@ -83,35 +131,49 @@ async function sendMessage(req, res) {
       }
     }
 
-    const message = await Message.create({
-      sender: req.user._id,
-      receiver: req.params.id,
-      conversation: conversation._id,
-      text: text,
-      replyTo: replyTo || null,
-      post: post || null,
-    });
+    let message;
+    let messageCreated = false;
 
-    const populatedMessage = await Message.findById(message._id)
-      .populate("sender", "name profilePic")
-      .populate("receiver", "name profilePic")
-      .populate("post")
-      .populate({
-        path: "replyTo",
-        populate: {
-          path: "sender",
-          select: "name profilePic",
-        },
+    try {
+      message = await Message.create({
+        sender: senderId,
+        receiver: receiverId,
+        conversation: conversation._id,
+        clientMessageId: normalizedClientMessageId,
+        text,
+        replyTo: replyTo || null,
+        post: post || null,
       });
+      messageCreated = true;
+    } catch (error) {
+      if (error?.code !== 11000 || !normalizedClientMessageId) {
+        throw error;
+      }
+
+      message = await Message.findOne({
+        sender: senderId,
+        clientMessageId: normalizedClientMessageId,
+      });
+
+      if (!message) throw error;
+
+      if (message.receiver.toString() !== receiverId.toString()) {
+        return res.status(409).json({
+          message: "Client message ID is already in use",
+        });
+      }
+    }
+
+    const populatedMessage = await populateMessage(message._id);
 
     const receiverSocketIds = getUserSocketIds(receiverId);
 
     const io = getIO();
 
-    if (receiverSocketIds.length > 0) {
+    if (messageCreated && receiverSocketIds.length > 0) {
       io.to(receiverSocketIds).emit("receive-message", {
         ...populatedMessage.toObject(),
-        clientMessageId,
+        clientMessageId: normalizedClientMessageId,
       });
     }
 

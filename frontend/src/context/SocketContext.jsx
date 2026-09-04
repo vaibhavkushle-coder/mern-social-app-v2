@@ -45,10 +45,23 @@ export function SocketProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem("token");
 
-    if (!user?._id || !token) return;
+    if (!user?._id || !token) {
+      socket.disconnect();
+      socket.auth = {};
+      setOnlineUsers([]);
+      setLastSeenUsers({});
+      return;
+    }
 
     socket.auth = { token };
     socket.connect();
+
+    return () => {
+      socket.disconnect();
+      socket.auth = {};
+      setOnlineUsers([]);
+      setLastSeenUsers({});
+    };
   }, [user?._id]);
 
   return (

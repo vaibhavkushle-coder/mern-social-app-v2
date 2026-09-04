@@ -67,7 +67,11 @@ function Chat() {
   const longPressed = useRef(false);
   const requestVersion = useRef(0);
   const olderRequestRef = useRef(false);
-  const [messageMeta, setMessageMeta] = useState({ hasMore: false, nextCursor: null });
+  const messageOwnerUserIdRef = useRef(null);
+  const [messageMeta, setMessageMeta] = useState({
+    hasMore: false,
+    nextCursor: null,
+  });
 
   const navigate = useNavigate();
 
@@ -137,7 +141,28 @@ function Chat() {
   }
 
   useEffect(() => {
-    const cached = messageCache[id];
+    const currentUserId = user?._id?.toString() || null;
+    const accountChanged = messageOwnerUserIdRef.current !== currentUserId;
+
+    if (accountChanged) {
+      messageOwnerUserIdRef.current = currentUserId;
+      requestVersion.current += 1;
+      olderRequestRef.current = false;
+      setMessages([]);
+      setMessageMeta({ hasMore: false, nextCursor: null });
+      setChatUser(null);
+      setIsTyping(false);
+      setLoadingMessage(true);
+      setEditingMessage(null);
+      setSelectedMessageIds([]);
+      setSelectMode(false);
+      setShowDeleteConfirm(false);
+      setShowMenu(false);
+      setReplyMessage(null);
+      setText("");
+    }
+
+    const cached = accountChanged ? null : messageCache[id];
     if (cached?.messages?.length) {
       setMessages(cached.messages);
       setMessageMeta(cached.meta);
@@ -320,10 +345,23 @@ function Chat() {
         );
 
         const merged = [...response.data.messages, ...localMessages];
-        setMessageCache((cache) => ({ ...cache, [id]: { messages: merged, meta: { hasMore: response.data.hasMore, nextCursor: response.data.nextCursor }, fetchedAt: Date.now() } }));
+        setMessageCache((cache) => ({
+          ...cache,
+          [id]: {
+            messages: merged,
+            meta: {
+              hasMore: response.data.hasMore,
+              nextCursor: response.data.nextCursor,
+            },
+            fetchedAt: Date.now(),
+          },
+        }));
         return merged;
       });
-      setMessageMeta({ hasMore: response.data.hasMore, nextCursor: response.data.nextCursor });
+      setMessageMeta({
+        hasMore: response.data.hasMore,
+        nextCursor: response.data.nextCursor,
+      });
     } catch (error) {
       console.log(error);
     } finally {
@@ -476,21 +514,46 @@ function Chat() {
   }
 
   async function loadOlderMessages() {
-    if (!messageMeta.hasMore || !messageMeta.nextCursor || olderRequestRef.current) return;
+    if (
+      !messageMeta.hasMore ||
+      !messageMeta.nextCursor ||
+      olderRequestRef.current
+    )
+      return;
     olderRequestRef.current = true;
     const container = messagesContainerRef.current;
     const oldHeight = container?.scrollHeight || 0;
     try {
-    const response = await getMessages(id, messageMeta.nextCursor);
-    setMessages((current) => {
-      const ids = new Set(current.map((message) => message._id));
-      const merged = [...response.data.messages.filter((message) => !ids.has(message._id)), ...current];
-      setMessageCache((cache) => ({ ...cache, [id]: { messages: merged, meta: { hasMore: response.data.hasMore, nextCursor: response.data.nextCursor }, fetchedAt: Date.now() } }));
-      return merged;
-    });
-    setMessageMeta({ hasMore: response.data.hasMore, nextCursor: response.data.nextCursor });
-    requestAnimationFrame(() => { if (container) container.scrollTop = container.scrollHeight - oldHeight; });
-    } finally { olderRequestRef.current = false; }
+      const response = await getMessages(id, messageMeta.nextCursor);
+      setMessages((current) => {
+        const ids = new Set(current.map((message) => message._id));
+        const merged = [
+          ...response.data.messages.filter((message) => !ids.has(message._id)),
+          ...current,
+        ];
+        setMessageCache((cache) => ({
+          ...cache,
+          [id]: {
+            messages: merged,
+            meta: {
+              hasMore: response.data.hasMore,
+              nextCursor: response.data.nextCursor,
+            },
+            fetchedAt: Date.now(),
+          },
+        }));
+        return merged;
+      });
+      setMessageMeta({
+        hasMore: response.data.hasMore,
+        nextCursor: response.data.nextCursor,
+      });
+      requestAnimationFrame(() => {
+        if (container) container.scrollTop = container.scrollHeight - oldHeight;
+      });
+    } finally {
+      olderRequestRef.current = false;
+    }
   }
 
   async function fetchChatUser() {
@@ -864,7 +927,10 @@ z-50 overflow-hidden"
 
         <div
           ref={messagesContainerRef}
-          onScroll={(event) => { if (event.currentTarget.scrollTop < 80) loadOlderMessages().catch(console.log); }}
+          onScroll={(event) => {
+            if (event.currentTarget.scrollTop < 80)
+              loadOlderMessages().catch(console.log);
+          }}
           className={`flex-1 overflow-y-auto px-5 py-5
          space-y-2 scroll-smooth  scrollbar-thin
        bg-[linear-gradient(rgba(5,7,15,0.45),rgba(5,7,15,0.45)),url('/images/chat-bg.png.jpeg')]

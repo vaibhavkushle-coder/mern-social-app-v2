@@ -1,8 +1,12 @@
 import axios from "axios";
 import socket from "../socket";
 
+const apiUrl =
+  import.meta.env.VITE_API_URL?.replace(/\/+$/, "") ||
+  "https://mern-social-backend-hl8v.onrender.com/api";
+
 const api = axios.create({
-  baseURL: "https://mern-social-backend-hl8v.onrender.com/api",
+  baseURL: apiUrl,
 });
 
 api.interceptors.request.use((config) => {

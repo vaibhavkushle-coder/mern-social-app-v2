@@ -59,6 +59,9 @@ export function ConversationProvider({ children }) {
 
   useEffect(() => {
     setConversations([]);
+    setConversationsLoaded(false);
+    setMessageCache({});
+    conversationsRequestRef.current = null;
 
     if (!currentUserId) return;
 

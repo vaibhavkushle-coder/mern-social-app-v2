@@ -8,10 +8,18 @@ import { useSocket } from "../hooks/useSocket";
 import { useUser } from "../hooks/useUser";
 
 export const NotificationContext = createContext();
+const INITIAL_NOTIFICATION_META = {
+  nextCursor: null,
+  hasMore: true,
+  loaded: false,
+  loadingMore: false,
+};
 
 export function NotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
-  const [notificationMeta, setNotificationMeta] = useState({ nextCursor: null, hasMore: true, loaded: false, loadingMore: false });
+  const [notificationMeta, setNotificationMeta] = useState(
+    INITIAL_NOTIFICATION_META,
+  );
   const notificationsRequestRef = useRef(null);
   const currentUserIdRef = useRef(null);
 
@@ -62,7 +70,15 @@ export function NotificationProvider({ children }) {
 
   useEffect(() => {
     function handleNewNotification(notification) {
-      if (!currentUserIdRef.current) return;
+      const notificationUserId =
+        notification.toUser?._id || notification.toUser;
+
+      if (
+        !currentUserIdRef.current ||
+        notificationUserId?.toString() !== currentUserIdRef.current
+      ) {
+        return;
+      }
 
       setNotifications((prev) => [notification, ...prev]);
     }
@@ -85,27 +101,43 @@ export function NotificationProvider({ children }) {
 
   useEffect(() => {
     setNotifications([]);
-
-    if (!currentUserId) return;
-
+    setNotificationMeta(INITIAL_NOTIFICATION_META);
+    notificationsRequestRef.current = null;
   }, [currentUserId, fetchNotifications]);
 
   async function loadMoreNotifications() {
     if (!notificationMeta.hasMore || !notificationMeta.nextCursor || notificationMeta.loadingMore) return;
+    const requestUserId = currentUserIdRef.current;
+
+    if (!requestUserId) return;
+
     setNotificationMeta((meta) => ({ ...meta, loadingMore: true }));
     try {
       const response = await getNotifications(notificationMeta.nextCursor);
+
+      if (currentUserIdRef.current !== requestUserId) return;
+
       setNotifications((prev) => {
         const map = new Map([...prev, ...response.data.notifications].map((item) => [item._id, item]));
         return [...map.values()];
       });
       setNotificationMeta((meta) => ({ ...meta, hasMore: response.data.hasMore, nextCursor: response.data.nextCursor }));
-    } finally { setNotificationMeta((meta) => ({ ...meta, loadingMore: false })); }
+    } finally {
+      if (currentUserIdRef.current === requestUserId) {
+        setNotificationMeta((meta) => ({ ...meta, loadingMore: false }));
+      }
+    }
   }
 
   async function readAllNotifications() {
+    const requestUserId = currentUserIdRef.current;
+
+    if (!requestUserId) return;
+
     try {
       await markAllAsRead();
+
+      if (currentUserIdRef.current !== requestUserId) return;
 
       setNotifications((prev) =>
         prev.map((notification) => ({
@@ -119,8 +151,14 @@ export function NotificationProvider({ children }) {
   }
 
   async function deleteSelectedNotificationsFromState(notificationIds) {
+    const requestUserId = currentUserIdRef.current;
+
+    if (!requestUserId) return;
+
     try {
       await deleteSelectedNotifications(notificationIds);
+
+      if (currentUserIdRef.current !== requestUserId) return;
 
       setNotifications((prev) =>
         prev.filter(

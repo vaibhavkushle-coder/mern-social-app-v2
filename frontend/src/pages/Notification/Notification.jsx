@@ -11,6 +11,7 @@ import {
   FiBell,
 } from "react-icons/fi";
 import { useState, useRef } from "react";
+import { useUser } from "../../hooks/useUser";
 
 function Notification() {
   const [selectMode, setSelectmode] = useState(false);
@@ -20,6 +21,8 @@ function Notification() {
 
   const longPressTimer = useRef(null);
   const longPressed = useRef(false);
+  const { user } = useUser();
+  const currentUserId = user?._id?.toString() || null;
 
   const {
     notifications,
@@ -28,7 +31,15 @@ function Notification() {
     deleteSelectedNotificationsFromState,
   } = useNotification();
 
-  useEffect(() => { fetchNotifications().catch(() => {}); }, [fetchNotifications]);
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    setSelectmode(false);
+    setSelectedIds([]);
+    setIsMenuOpen(false);
+    setShowDeleteConfirm(false);
+    fetchNotifications().catch(() => {});
+  }, [currentUserId, fetchNotifications]);
 
   const navigate = useNavigate();
 

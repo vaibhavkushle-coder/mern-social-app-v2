@@ -11,6 +11,7 @@ import {
 } from "react-icons/fi";
 import getTimeAgo from "../../utils/getTimeAgo";
 import { useConversation } from "../../hooks/useConversation";
+import { useUser } from "../../hooks/useUser";
 
 function Messages() {
   const [search, setSearch] = useState("");
@@ -21,6 +22,15 @@ function Messages() {
 
   const { conversations, setConversations, fetchConversations, conversationsLoaded } =
     useConversation();
+  const { user } = useUser();
+
+  useEffect(() => {
+    setSearch("");
+    setSelectMode(false);
+    setSelectedIds([]);
+    setShowMenu(false);
+    setShowDeleteConfirm(false);
+  }, [user?._id]);
 
   useEffect(() => { if (!conversationsLoaded) fetchConversations().catch(() => {}); }, [conversationsLoaded, fetchConversations]);
 

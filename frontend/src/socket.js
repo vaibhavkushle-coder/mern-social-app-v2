@@ -1,6 +1,10 @@
 import { io } from "socket.io-client";
 
-const socket = io("https://mern-social-backend-hl8v.onrender.com", {
+const socketUrl =
+  import.meta.env.VITE_SOCKET_URL?.replace(/\/+$/, "") ||
+  "https://mern-social-backend-hl8v.onrender.com";
+
+const socket = io(socketUrl, {
   autoConnect: false,
 });
 

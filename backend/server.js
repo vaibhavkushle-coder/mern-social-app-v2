@@ -4,6 +4,7 @@ const { Server } = require("socket.io");
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const {
   setIO,
   addUserSocket,
@@ -17,8 +18,32 @@ const Message = require("./models/Message");
 const dotenv = require("dotenv");
 dotenv.config();
 
+const defaultCorsAllowedOrigins = [
+  "http://localhost:5173",
+  "https://frontend-one-omega-14.vercel.app",
+];
+const defaultSocketCorsAllowedOrigins = [
+  ...defaultCorsAllowedOrigins,
+  "https://frontend-git-main-vaibhavkushle-coders-projects.vercel.app",
+];
+const getAllowedOrigins = (value, fallback) => {
+  const configuredOrigins = (value || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  return configuredOrigins.length > 0 ? configuredOrigins : fallback;
+};
+const corsAllowedOrigins = getAllowedOrigins(
+  process.env.CORS_ALLOWED_ORIGINS,
+  defaultCorsAllowedOrigins,
+);
+const socketCorsAllowedOrigins = getAllowedOrigins(
+  process.env.SOCKET_CORS_ALLOWED_ORIGINS,
+  defaultSocketCorsAllowedOrigins,
+);
+
 const connectDB = require("./config/db");
-connectDB();
 
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -33,11 +58,7 @@ app.set("trust proxy", 1);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      "https://frontend-one-omega-14.vercel.app",
-      "https://frontend-git-main-vaibhavkushle-coders-projects.vercel.app",
-    ],
+    origin: socketCorsAllowedOrigins,
     methods: ["GET", "POST"],
   },
 });
@@ -105,13 +126,39 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("message-seen", ({ senderId }) => {
-    const senderSocketIds = getUserSocketIds(senderId);
+  socket.on("message-seen", async ({ senderId } = {}) => {
+    try {
+      if (
+        !mongoose.isObjectIdOrHexString(senderId) ||
+        senderId.toString() === socket.userId
+      ) {
+        return;
+      }
 
-    if (senderSocketIds.length > 0) {
-      io.to(senderSocketIds).emit("message-seen", {
-        receiverId: socket.userId,
-      });
+      const [seenMessageExists, unseenMessageExists] = await Promise.all([
+        Message.exists({
+          sender: senderId,
+          receiver: socket.userId,
+          seen: true,
+        }),
+        Message.exists({
+          sender: senderId,
+          receiver: socket.userId,
+          seen: false,
+        }),
+      ]);
+
+      if (!seenMessageExists || unseenMessageExists) return;
+
+      const senderSocketIds = getUserSocketIds(senderId.toString());
+
+      if (senderSocketIds.length > 0) {
+        io.to(senderSocketIds).emit("message-seen", {
+          receiverId: socket.userId,
+        });
+      }
+    } catch (error) {
+      console.log(error);
     }
   });
 
@@ -168,10 +215,7 @@ io.on("connection", (socket) => {
 app.use(express.json());
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://frontend-one-omega-14.vercel.app",
-    ],
+    origin: corsAllowedOrigins,
   }),
 );
 
@@ -189,6 +233,16 @@ app.get("/", (req, res) => {
   res.send("Backend Running🚀");
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running on ${PORT}`);
+async function startServer() {
+  await connectDB();
+  await Message.init();
+
+  server.listen(PORT, () => {
+    console.log(`Server running on ${PORT}`);
+  });
+}
+
+startServer().catch((error) => {
+  console.error("Server startup failed:", error);
+  process.exit(1);
 });

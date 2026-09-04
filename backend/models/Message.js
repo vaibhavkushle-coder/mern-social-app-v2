@@ -15,6 +15,10 @@ const messageSchema = new mongoose.Schema(
       ref: "Conversation",
       required: true,
     },
+    clientMessageId: {
+      type: String,
+      default: null,
+    },
     deleteFor: [
       {
         user: {
@@ -65,5 +69,12 @@ const messageSchema = new mongoose.Schema(
 
 messageSchema.index({ conversation: 1, createdAt: -1 });
 messageSchema.index({ receiver: 1, seen: 1 });
+messageSchema.index(
+  { sender: 1, clientMessageId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { clientMessageId: { $type: "string" } },
+  },
+);
 
 module.exports = mongoose.model("Message", messageSchema);
