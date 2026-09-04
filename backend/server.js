@@ -18,12 +18,9 @@ const Message = require("./models/Message");
 const dotenv = require("dotenv");
 dotenv.config();
 
-const defaultCorsAllowedOrigins = [
+const defaultAllowedOrigins = [
   "http://localhost:5173",
   "https://frontend-one-omega-14.vercel.app",
-];
-const defaultSocketCorsAllowedOrigins = [
-  ...defaultCorsAllowedOrigins,
   "https://frontend-git-main-vaibhavkushle-coders-projects.vercel.app",
 ];
 const getAllowedOrigins = (value, fallback) => {
@@ -34,13 +31,9 @@ const getAllowedOrigins = (value, fallback) => {
 
   return configuredOrigins.length > 0 ? configuredOrigins : fallback;
 };
-const corsAllowedOrigins = getAllowedOrigins(
+const allowedOrigins = getAllowedOrigins(
   process.env.CORS_ALLOWED_ORIGINS,
-  defaultCorsAllowedOrigins,
-);
-const socketCorsAllowedOrigins = getAllowedOrigins(
-  process.env.SOCKET_CORS_ALLOWED_ORIGINS,
-  defaultSocketCorsAllowedOrigins,
+  defaultAllowedOrigins,
 );
 
 const connectDB = require("./config/db");
@@ -58,7 +51,7 @@ app.set("trust proxy", 1);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: socketCorsAllowedOrigins,
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
 });
@@ -215,7 +208,7 @@ io.on("connection", (socket) => {
 app.use(express.json());
 app.use(
   cors({
-    origin: corsAllowedOrigins,
+    origin: allowedOrigins,
   }),
 );
 

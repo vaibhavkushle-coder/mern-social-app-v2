@@ -1,4 +1,9 @@
 const Notification = require("../models/Notification");
+const {
+  InvalidPaginationCursorError,
+  buildPaginationFilter,
+  encodePaginationCursor,
+} = require("../utils/paginationCursor");
 
 async function getNotifications(req, res) {
   try {
@@ -6,11 +11,11 @@ async function getNotifications(req, res) {
     const cursor = req.query.cursor;
     const notifications = await Notification.find({
       toUser: req.user._id,
-      ...(cursor ? { createdAt: { $lt: new Date(cursor) } } : {}),
+      ...buildPaginationFilter("createdAt", cursor),
     })
       .populate("fromUser", "name profilePic")
       .populate("post", "_id")
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .limit(limit + 1);
     const staleNotificationIds = notifications
       .filter(
@@ -43,10 +48,17 @@ async function getNotifications(req, res) {
       hasMore,
       nextCursor:
         hasMore && notifications.length > 0
-          ? notifications[Math.min(limit, notifications.length) - 1].createdAt.toISOString()
+          ? encodePaginationCursor(
+              notifications[Math.min(limit, notifications.length) - 1],
+              "createdAt",
+            )
           : null,
     });
   } catch (error) {
+    if (error instanceof InvalidPaginationCursorError) {
+      return res.status(400).json({ message: error.message });
+    }
+
     console.log(error);
 
     res.status(500).json({

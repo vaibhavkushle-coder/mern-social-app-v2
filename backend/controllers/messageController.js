@@ -4,6 +4,11 @@ const Conversation = require("../models/Conversation");
 const User = require("../models/User");
 const Post = require("../models/Post");
 const { getCanonicalConversationPair } = require("../utils/conversationPair");
+const {
+  InvalidPaginationCursorError,
+  buildPaginationFilter,
+  encodePaginationCursor,
+} = require("../utils/paginationCursor");
 
 function populateMessage(messageId) {
   return Message.findById(messageId)
@@ -212,10 +217,16 @@ async function getMessages(req, res) {
 
     const limit = Math.min(Math.max(Number(req.query.limit) || 40, 1), 100);
     const before = req.query.before;
+    const paginationFilter = buildPaginationFilter("createdAt", before);
+    const createdAtFilters = [
+      ...(deletedRecord
+        ? [{ createdAt: { $gt: deletedRecord.deletedAt } }]
+        : []),
+      ...(before ? [paginationFilter] : []),
+    ];
     const messages = await Message.find({
       conversation: conversation._id,
-      ...(deletedRecord ? { createdAt: { $gt: deletedRecord.deletedAt } } : {}),
-      ...(before ? { createdAt: { $lt: new Date(before) } } : {}),
+      ...(createdAtFilters.length > 0 ? { $and: createdAtFilters } : {}),
 
       deleteFor: {
         $not: {
@@ -225,7 +236,7 @@ async function getMessages(req, res) {
         },
       },
     })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .limit(limit + 1)
       .populate("sender", "name profilePic")
       .populate("receiver", "name profilePic")
@@ -243,9 +254,15 @@ async function getMessages(req, res) {
     res.status(200).json({
       messages: page,
       hasMore,
-      nextCursor: hasMore ? page[0].createdAt.toISOString() : null,
+      nextCursor: hasMore
+        ? encodePaginationCursor(page[0], "createdAt")
+        : null,
     });
   } catch (error) {
+    if (error instanceof InvalidPaginationCursorError) {
+      return res.status(400).json({ message: error.message });
+    }
+
     console.log(error);
 
     res.status(500).json({
@@ -291,9 +308,9 @@ async function getConversations(req, res) {
     const cursor = req.query.cursor;
     const userConversations = await Conversation.find({
       participants: currentUserId,
-      ...(cursor ? { updatedAt: { $lt: new Date(cursor) } } : {}),
+      ...buildPaginationFilter("updatedAt", cursor),
     })
-      .sort({ updatedAt: -1 })
+      .sort({ updatedAt: -1, _id: -1 })
       .limit(limit + 1)
       .populate("participants", "name profilePic lastSeen");
     const hasMore = userConversations.length > limit;
@@ -331,9 +348,15 @@ async function getConversations(req, res) {
     res.status(200).json({
       conversations,
       hasMore,
-      nextCursor: hasMore ? page[page.length - 1].updatedAt.toISOString() : null,
+      nextCursor: hasMore
+        ? encodePaginationCursor(page[page.length - 1], "updatedAt")
+        : null,
     });
   } catch (error) {
+    if (error instanceof InvalidPaginationCursorError) {
+      return res.status(400).json({ message: error.message });
+    }
+
     console.log(error);
 
     res.status(500).json({

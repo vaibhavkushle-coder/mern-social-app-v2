@@ -7,6 +7,11 @@ const Notification = require("../models/Notification");
 const { getIO, getUserSocketIds } = require("../socket");
 const Message = require("../models/Message");
 const Report = require("../models/Report");
+const {
+  InvalidPaginationCursorError,
+  buildPaginationFilter,
+  encodePaginationCursor,
+} = require("../utils/paginationCursor");
 
 async function createPost(req, res) {
   try {
@@ -48,7 +53,7 @@ async function getAllPosts(req, res) {
   try {
     const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 30);
     const cursor = req.query.cursor;
-    const filter = cursor ? { createdAt: { $lt: new Date(cursor) } } : {};
+    const filter = buildPaginationFilter("createdAt", cursor);
 
     const posts = await Post.find(filter)
       .populate("user", "name profilePic")
@@ -57,7 +62,7 @@ async function getAllPosts(req, res) {
         path: "comments.user",
         select: "name profilePic",
       })
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .limit(limit + 1);
 
     const hasMore = posts.length > limit;
@@ -66,9 +71,15 @@ async function getAllPosts(req, res) {
     res.status(200).json({
       posts: page,
       hasMore,
-      nextCursor: hasMore ? page[page.length - 1].createdAt.toISOString() : null,
+      nextCursor: hasMore
+        ? encodePaginationCursor(page[page.length - 1], "createdAt")
+        : null,
     });
   } catch (error) {
+    if (error instanceof InvalidPaginationCursorError) {
+      return res.status(400).json({ message: error.message });
+    }
+
     console.log(error);
 
     res.status(500).json({
@@ -517,10 +528,10 @@ async function getMyPosts(req, res) {
     const cursor = req.query.cursor;
     const posts = await Post.find({
       user: userId,
-      ...(cursor ? { createdAt: { $lt: new Date(cursor) } } : {}),
+      ...buildPaginationFilter("createdAt", cursor),
     })
       .populate("user", "name profilePic")
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: -1, _id: -1 })
       .limit(limit + 1);
     const hasMore = posts.length > limit;
     const page = hasMore ? posts.slice(0, limit) : posts;
@@ -528,9 +539,15 @@ async function getMyPosts(req, res) {
     res.status(200).json({
       posts: page,
       hasMore,
-      nextCursor: hasMore ? page[page.length - 1].createdAt.toISOString() : null,
+      nextCursor: hasMore
+        ? encodePaginationCursor(page[page.length - 1], "createdAt")
+        : null,
     });
   } catch (error) {
+    if (error instanceof InvalidPaginationCursorError) {
+      return res.status(400).json({ message: error.message });
+    }
+
     console.log(error);
 
     res.status(500).json({
