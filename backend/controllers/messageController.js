@@ -535,6 +535,12 @@ async function editMessage(req, res) {
       });
     }
 
+    if (text.trim().length > 5000) {
+      return res.status(400).json({
+        message: "Message is too long",
+      });
+    }
+
     const message = await Message.findById(messageId);
 
     if (!message) {
@@ -549,15 +555,44 @@ async function editMessage(req, res) {
       });
     }
 
-    message.text = text.trim();
-    message.edited = true;
+    const deletedForCurrentUser = message.deleteFor.some(
+      (item) => item.user.toString() === req.user._id.toString(),
+    );
 
-    await message.save();
+    if (message.isDeletedForEveryone || deletedForCurrentUser) {
+      return res.status(400).json({
+        message: "Deleted message cannot be edited",
+      });
+    }
 
-    const updatedMessage = await Message.findById(message._id)
+    const updatedMessage = await Message.findOneAndUpdate(
+      {
+        _id: message._id,
+        sender: req.user._id,
+        isDeletedForEveryone: { $ne: true },
+        deleteFor: {
+          $not: {
+            $elemMatch: { user: req.user._id },
+          },
+        },
+      },
+      {
+        $set: {
+          text: text.trim(),
+          edited: true,
+        },
+      },
+      { new: true },
+    )
       .populate("sender", "name profilePic")
       .populate("receiver", "name profilePic")
       .populate("post");
+
+    if (!updatedMessage) {
+      return res.status(400).json({
+        message: "Deleted message cannot be edited",
+      });
+    }
 
     const receiverSocketIds = getUserSocketIds(
       updatedMessage.receiver._id.toString(),
