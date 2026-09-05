@@ -46,7 +46,7 @@ function Notification() {
     if (notifications.some((notification) => !notification.isRead)) {
       readAllNotifications();
     }
-  }, [notifications]);
+  }, [notifications, readAllNotifications]);
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden">

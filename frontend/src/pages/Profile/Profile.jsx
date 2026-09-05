@@ -21,7 +21,7 @@ function Profile() {
 
   useEffect(() => {
     fetchUser();
-  }, []);
+  }, [fetchUser]);
 
   function handleCloseEditProfile() {
     setIsEditProfileOpen(false);

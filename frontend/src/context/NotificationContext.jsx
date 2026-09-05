@@ -144,7 +144,7 @@ export function NotificationProvider({ children }) {
     }
   }
 
-  async function readAllNotifications() {
+  const readAllNotifications = useCallback(async () => {
     const requestUserId = currentUserIdRef.current;
 
     if (!requestUserId) return;
@@ -163,7 +163,7 @@ export function NotificationProvider({ children }) {
     } catch (error) {
       console.log(error);
     }
-  }
+  }, []);
 
   async function deleteSelectedNotificationsFromState(notificationIds) {
     const requestUserId = currentUserIdRef.current;

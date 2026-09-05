@@ -9,7 +9,7 @@ function SavePosts() {
 
   useEffect(() => {
     fetchUser();
-  }, []);
+  }, [fetchUser]);
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <Navbar />

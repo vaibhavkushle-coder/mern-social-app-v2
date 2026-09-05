@@ -308,7 +308,7 @@ function Chat() {
 
       clearTimeout(typingTimer.current);
     };
-  }, [id, user?._id]);
+  }, [id, user?._id, socket]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
