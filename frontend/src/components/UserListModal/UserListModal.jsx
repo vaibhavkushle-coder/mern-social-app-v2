@@ -9,14 +9,10 @@ import { useHome } from "../../hooks/useHome";
 function UserListModal({
   title,
   users = [],
-  profileUser,
   onClose,
   showUnfollow = false,
   showFollowerActions = false,
   isOwnProfile = false,
-  onUnfollow,
-  unfollowingUserId,
-  setProfileUser,
   showRemoveFollower = false,
   onRemoveFollower,
   removingFollowerId,
@@ -79,10 +75,6 @@ function UserListModal({
   function handleUserClick(userId) {
     navigate(`/profile/${userId}`);
     onClose();
-  }
-
-  function handleModalClick() {
-    setOpenActionMenuId(null);
   }
 
   const sortedUsers = [...users].sort((a, b) => {

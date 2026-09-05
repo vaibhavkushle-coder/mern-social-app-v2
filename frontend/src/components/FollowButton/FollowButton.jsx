@@ -4,7 +4,7 @@ import { useToast } from "../../hooks/useToast";
 import { useHome } from "../../hooks/useHome";
 import { useState } from "react";
 
-function FollowButton({ profileUser, setProfileUser }) {
+function FollowButton({ profileUser }) {
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
   const { user: currentUser, setUser: setCurrentUser } = useUser();

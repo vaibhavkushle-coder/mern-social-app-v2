@@ -9,7 +9,7 @@ import {
   FiArrowLeft,
 } from "react-icons/fi";
 import { useSocket } from "../../hooks/useSocket";
-import { unfollowUser, removeFollower } from "../../services/userService";
+import { removeFollower } from "../../services/userService";
 import { useToast } from "../../hooks/useToast";
 import { logout } from "../../services/authService";
 
@@ -17,7 +17,6 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
   const [isFollowersOpen, setIsFollowersOpen] = useState(false);
   const [isFollowingOpen, setIsFollowingOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [unfollowingUserId, setUnfollowingUserId] = useState(null);
   const [removingFollowerId, setRemovingFollowerId] = useState(null);
 
   const { socket } = useSocket();
@@ -133,21 +132,6 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
   function handleMenuToggle(e) {
     e.stopPropagation();
     setIsMenuOpen((prev) => !prev);
-  }
-
-  async function handleUnfollow(userId) {
-    try {
-      setUnfollowingUserId(userId);
-
-      await unfollowUser(userId);
-
-      showToast("Unfollowed successfully", "success");
-    } catch (error) {
-      console.log(error);
-      showToast("Failed to unfollow user", "error");
-    } finally {
-      setUnfollowingUserId(null);
-    }
   }
 
   async function handleRemovingFollower(userId) {
@@ -639,12 +623,8 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
         <UserListModal
           title="Following"
           users={following}
-          profileUser={user}
           onClose={() => setIsFollowingOpen(false)}
           showUnfollow={true}
-          onUnfollow={handleUnfollow}
-          unfollowingUserId={unfollowingUserId}
-          setProfileUser={setUser}
           isOwnProfile={isOwnProfile}
         />
       )}

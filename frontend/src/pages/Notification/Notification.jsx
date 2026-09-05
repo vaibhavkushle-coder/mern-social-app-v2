@@ -8,7 +8,6 @@ import {
   FiMessageCircle,
   FiUserPlus,
   FiMoreVertical,
-  FiBell,
 } from "react-icons/fi";
 import { useState, useRef } from "react";
 import { useUser } from "../../hooks/useUser";

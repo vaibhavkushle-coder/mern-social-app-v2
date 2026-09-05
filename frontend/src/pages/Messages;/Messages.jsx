@@ -77,7 +77,7 @@ function Messages() {
   }
 
   useEffect(() => {
-    async function handleMessageDeletedForEveryone({ messageId }) {
+    async function handleMessageDeletedForEveryone() {
       try {
         await fetchConversations();
       } catch (error) {

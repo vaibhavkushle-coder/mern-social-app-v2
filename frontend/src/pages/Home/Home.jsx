@@ -195,7 +195,7 @@ function Home() {
       return;
     }
     try {
-      const response = await deletePost(postId);
+      await deletePost(postId);
 
       setPosts((prevPosts) => prevPosts.filter((post) => post._id !== postId));
       showToast("Post deleted successfully 🗑️", "success");

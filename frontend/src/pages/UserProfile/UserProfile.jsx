@@ -81,7 +81,7 @@ function UserProfile() {
         >
           {!isOwnProfile && (
             <div className="flex mr-5 mt-6">
-              <FollowButton profileUser={user} setProfileUser={setUser} />
+              <FollowButton profileUser={user} />
 
               <button
                 type="button"
