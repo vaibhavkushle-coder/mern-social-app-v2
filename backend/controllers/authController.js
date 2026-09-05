@@ -1,18 +1,48 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { INPUT_LIMITS } = require("../utils/validation");
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function register(req, res) {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password } = req.body || {};
 
-    if (!name?.trim() || !email?.trim() || !password) {
+    if (
+      typeof name !== "string" ||
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !name.trim() ||
+      !email.trim() ||
+      !password
+    ) {
       return res.status(400).json({
         message: "Name, email and password are required",
       });
     }
 
-    const normalizedEmail = email?.trim().toLowerCase();
+    const normalizedName = name.trim();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (normalizedName.length > INPUT_LIMITS.name) {
+      return res.status(400).json({ message: "Name is too long" });
+    }
+
+    if (
+      normalizedEmail.length > INPUT_LIMITS.email ||
+      !EMAIL_PATTERN.test(normalizedEmail)
+    ) {
+      return res.status(400).json({ message: "Invalid email address" });
+    }
+
+    const passwordBytes = Buffer.byteLength(password, "utf8");
+
+    if (passwordBytes < 8 || passwordBytes > INPUT_LIMITS.passwordBytes) {
+      return res.status(400).json({
+        message: "Password must be 8 to 72 bytes long",
+      });
+    }
 
     const existingUser = await User.findOne({ email: normalizedEmail });
 
@@ -25,7 +55,7 @@ async function register(req, res) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      name: name.trim(),
+      name: normalizedName,
       email: normalizedEmail,
       password: hashedPassword,
     });
@@ -53,15 +83,20 @@ async function register(req, res) {
 
 async function login(req, res) {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
 
-    if (!email?.trim() || !password) {
+    if (
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !email.trim() ||
+      !password
+    ) {
       return res.status(400).json({
         message: "Email and password are required",
       });
     }
 
-    const normalizedEmail = email?.trim().toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
 
     const user = await User.findOne({ email: normalizedEmail });
 

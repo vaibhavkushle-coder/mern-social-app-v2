@@ -7,15 +7,31 @@ const Notification = require("../models/Notification");
 const { getIO, getUserSocketIds } = require("../socket");
 const Message = require("../models/Message");
 const Report = require("../models/Report");
+const mongoose = require("mongoose");
 const {
   InvalidPaginationCursorError,
   buildPaginationFilter,
   encodePaginationCursor,
 } = require("../utils/paginationCursor");
+const {
+  INPUT_LIMITS,
+  InputValidationError,
+  parsePaginationLimit,
+} = require("../utils/validation");
 
 async function createPost(req, res) {
   try {
-    const { caption } = req.body;
+    const { caption } = req.body || {};
+
+    if (caption !== undefined && typeof caption !== "string") {
+      return res.status(400).json({ message: "Invalid caption" });
+    }
+
+    const normalizedCaption = caption?.trim() || "";
+
+    if (normalizedCaption.length > INPUT_LIMITS.caption) {
+      return res.status(400).json({ message: "Caption is too long" });
+    }
 
     if (!req.file) {
       return res.status(400).json({
@@ -27,7 +43,7 @@ async function createPost(req, res) {
 
     const post = await Post.create({
       user: req.user._id,
-      caption,
+      caption: normalizedCaption,
       image: imageUrl,
     });
 
@@ -51,7 +67,7 @@ async function createPost(req, res) {
 
 async function getAllPosts(req, res) {
   try {
-    const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 30);
+    const limit = parsePaginationLimit(req.query.limit, 12, 30);
     const cursor = req.query.cursor;
     const filter = buildPaginationFilter("createdAt", cursor);
 
@@ -76,7 +92,10 @@ async function getAllPosts(req, res) {
         : null,
     });
   } catch (error) {
-    if (error instanceof InvalidPaginationCursorError) {
+    if (
+      error instanceof InvalidPaginationCursorError ||
+      error instanceof InputValidationError
+    ) {
       return res.status(400).json({ message: error.message });
     }
 
@@ -118,42 +137,81 @@ async function getPostById(req, res) {
 
 async function likePost(req, res) {
   try {
-    const post = await Post.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        likes: { $ne: req.user._id },
-      },
-      { $addToSet: { likes: req.user._id } },
-      { new: true },
-    );
+    const session = await mongoose.startSession();
+    let post;
+    let failure;
+    let createdNotificationId;
 
-    if (!post) {
-      const postExists = await Post.exists({ _id: req.params.id });
+    try {
+      await session.withTransaction(async () => {
+        post = undefined;
+        failure = undefined;
+        createdNotificationId = undefined;
 
-      return res.status(postExists ? 400 : 404).json({
-        message: postExists ? "Post already liked" : "Post not found",
+        post = await Post.findOneAndUpdate(
+          {
+            _id: req.params.id,
+            likes: { $ne: req.user._id },
+          },
+          { $addToSet: { likes: req.user._id } },
+          { new: true, session },
+        );
+
+        if (!post) {
+          const postExists = await Post.exists({ _id: req.params.id }).session(
+            session,
+          );
+          failure = {
+            status: postExists ? 400 : 404,
+            message: postExists ? "Post already liked" : "Post not found",
+          };
+          return;
+        }
+
+        if (req.user._id.toString() !== post.user.toString()) {
+          const notificationResult = await Notification.updateOne(
+            {
+              fromUser: req.user._id,
+              toUser: post.user,
+              post: post._id,
+              type: "like",
+            },
+            {
+              $setOnInsert: {
+                fromUser: req.user._id,
+                toUser: post.user,
+                post: post._id,
+                type: "like",
+              },
+            },
+            { upsert: true, session },
+          );
+
+          if (notificationResult.upsertedCount === 1) {
+            createdNotificationId = notificationResult.upsertedId;
+          }
+        }
       });
+    } finally {
+      await session.endSession();
     }
 
-    if (req.user._id.toString() !== post.user.toString()) {
-      const notification = await Notification.create({
-        fromUser: req.user._id,
-        toUser: post.user,
-        post: post._id,
-        type: "like",
-      });
+    if (failure) {
+      return res.status(failure.status).json({ message: failure.message });
+    }
 
+    if (createdNotificationId) {
       const populatedNotification = await Notification.findById(
-        notification._id,
+        createdNotificationId,
       )
         .populate("fromUser", "name profilePic")
         .populate("post");
-
-      const io = getIO();
       const receiverSocketIds = getUserSocketIds(post.user.toString());
 
-      if (receiverSocketIds.length > 0) {
-        io.to(receiverSocketIds).emit("new-notification", populatedNotification);
+      if (populatedNotification && receiverSocketIds.length > 0) {
+        getIO()
+          .to(receiverSocketIds)
+          .emit("new-notification", populatedNotification);
       }
     }
 
@@ -177,21 +235,65 @@ async function likePost(req, res) {
 
 async function unlikePost(req, res) {
   try {
-    const post = await Post.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        likes: req.user._id,
-      },
-      { $pull: { likes: req.user._id } },
-      { new: true },
-    );
+    const session = await mongoose.startSession();
+    let post;
+    let failure;
+    let removedNotification;
 
-    if (!post) {
-      const postExists = await Post.exists({ _id: req.params.id });
+    try {
+      await session.withTransaction(async () => {
+        post = undefined;
+        failure = undefined;
+        removedNotification = undefined;
 
-      return res.status(404).json({
-        message: postExists ? "Post is not liked" : "Post not found",
+        post = await Post.findOneAndUpdate(
+          {
+            _id: req.params.id,
+            likes: req.user._id,
+          },
+          { $pull: { likes: req.user._id } },
+          { new: true, session },
+        );
+
+        if (!post) {
+          const postExists = await Post.exists({ _id: req.params.id }).session(
+            session,
+          );
+          failure = {
+            status: 404,
+            message: postExists ? "Post is not liked" : "Post not found",
+          };
+          return;
+        }
+
+        if (req.user._id.toString() !== post.user.toString()) {
+          removedNotification = await Notification.findOneAndDelete(
+            {
+              fromUser: req.user._id,
+              toUser: post.user,
+              post: post._id,
+              type: "like",
+            },
+            { session },
+          ).select("_id");
+        }
       });
+    } finally {
+      await session.endSession();
+    }
+
+    if (failure) {
+      return res.status(failure.status).json({ message: failure.message });
+    }
+
+    if (removedNotification) {
+      const receiverSocketIds = getUserSocketIds(post.user.toString());
+
+      if (receiverSocketIds.length > 0) {
+        getIO().to(receiverSocketIds).emit("notification-removed", {
+          notificationId: removedNotification._id,
+        });
+      }
     }
 
     const updatedPost = await Post.findById(post._id)
@@ -214,12 +316,18 @@ async function unlikePost(req, res) {
 
 async function commentPost(req, res) {
   try {
-    const { text } = req.body;
+    const { text } = req.body || {};
 
-    if (!text) {
+    if (typeof text !== "string" || !text.trim()) {
       return res.status(400).json({
         message: "Comment is required",
       });
+    }
+
+    const normalizedText = text.trim();
+
+    if (normalizedText.length > INPUT_LIMITS.comment) {
+      return res.status(400).json({ message: "Comment is too long" });
     }
 
     const post = await Post.findById(req.params.id);
@@ -232,7 +340,7 @@ async function commentPost(req, res) {
 
     post.comments.push({
       user: req.user._id,
-      text: text,
+      text: normalizedText,
     });
 
     await post.save();
@@ -391,12 +499,18 @@ async function deletePost(req, res) {
 
 async function editComment(req, res) {
   try {
-    const { text } = req.body;
+    const { text } = req.body || {};
 
-    if (!text) {
+    if (typeof text !== "string" || !text.trim()) {
       return res.status(400).json({
         message: "Comment is required",
       });
+    }
+
+    const normalizedText = text.trim();
+
+    if (normalizedText.length > INPUT_LIMITS.comment) {
+      return res.status(400).json({ message: "Comment is too long" });
     }
 
     const post = await Post.findById(req.params.postId);
@@ -425,7 +539,7 @@ async function editComment(req, res) {
       });
     }
 
-    post.comments[commentIndex].text = text;
+    post.comments[commentIndex].text = normalizedText;
 
     await post.save();
 
@@ -474,13 +588,10 @@ async function getPostLikes(req, res) {
 
 async function editPost(req, res) {
   try {
-    const { caption } = req.body;
+    const { caption } = req.body || {};
 
     const postId = req.params.id;
     const userId = req.user._id;
-
-    console.log("POST ID:", postId);
-    console.log("USER ID:", userId);
 
     const post = await Post.findOne({
       _id: postId,
@@ -493,13 +604,19 @@ async function editPost(req, res) {
       });
     }
 
-    if (!caption || !caption.trim()) {
+    if (typeof caption !== "string" || !caption.trim()) {
       return res.status(400).json({
         message: "Caption is required",
       });
     }
 
-    post.caption = caption.trim();
+    const normalizedCaption = caption.trim();
+
+    if (normalizedCaption.length > INPUT_LIMITS.caption) {
+      return res.status(400).json({ message: "Caption is too long" });
+    }
+
+    post.caption = normalizedCaption;
     await post.save();
 
     const updatedPost = await Post.findById(post._id)
@@ -524,7 +641,7 @@ async function getMyPosts(req, res) {
   try {
     const userId = req.user._id;
 
-    const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 30);
+    const limit = parsePaginationLimit(req.query.limit, 12, 30);
     const cursor = req.query.cursor;
     const posts = await Post.find({
       user: userId,
@@ -544,7 +661,10 @@ async function getMyPosts(req, res) {
         : null,
     });
   } catch (error) {
-    if (error instanceof InvalidPaginationCursorError) {
+    if (
+      error instanceof InvalidPaginationCursorError ||
+      error instanceof InputValidationError
+    ) {
       return res.status(400).json({ message: error.message });
     }
 

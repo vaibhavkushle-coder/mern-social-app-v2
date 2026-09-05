@@ -80,7 +80,20 @@ export function NotificationProvider({ children }) {
         return;
       }
 
-      setNotifications((prev) => [notification, ...prev]);
+      setNotifications((prev) => [
+        notification,
+        ...prev.filter((item) => item._id !== notification._id),
+      ]);
+    }
+    function handleNotificationRemoved({ notificationId } = {}) {
+      if (!notificationId) return;
+
+      setNotifications((prev) =>
+        prev.filter(
+          (notification) =>
+            notification._id?.toString() !== notificationId.toString(),
+        ),
+      );
     }
     function handlePostDeleted({ postId }) {
       setNotifications((prev) =>
@@ -91,10 +104,12 @@ export function NotificationProvider({ children }) {
       );
     }
     socket.on("new-notification", handleNewNotification);
+    socket.on("notification-removed", handleNotificationRemoved);
     socket.on("post-deleted", handlePostDeleted);
 
     return () => {
       socket.off("new-notification", handleNewNotification);
+      socket.off("notification-removed", handleNotificationRemoved);
       socket.off("post-deleted", handlePostDeleted);
     };
   }, [socket]);

@@ -49,6 +49,7 @@ function EditPostModal({
 
           <textarea
             value={caption}
+            maxLength={300}
             rows={4}
             onChange={(e) => {
               setCaption(e.target.value);

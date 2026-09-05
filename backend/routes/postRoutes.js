@@ -4,6 +4,7 @@ const router = express.Router();
 
 const authMiddleware = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
+const validateObjectId = require("../middleware/validateObjectId");
 const {
   mutationLimiter,
   uploadLimiter,
@@ -33,16 +34,16 @@ router.post(
   createPost,
 );
 router.get("/all", authMiddleware, getAllPosts);
-router.post("/like/:id", authMiddleware, mutationLimiter, likePost);
-router.post("/unlike/:id", authMiddleware, mutationLimiter, unlikePost);
-router.post("/comment/:id", authMiddleware, mutationLimiter, commentPost);
-router.get("/comments/:id", authMiddleware, getComments);
-router.delete("/:postId/comment/:commentId", authMiddleware, deleteComment);
-router.delete("/:id", authMiddleware, deletePost);
-router.put("/:postId/comment/:commentId", authMiddleware, editComment);
-router.get("/:postId/likes", authMiddleware, getPostLikes);
-router.put("/edit/:id", authMiddleware, editPost);
+router.post("/like/:id", authMiddleware, validateObjectId("id", "post"), mutationLimiter, likePost);
+router.post("/unlike/:id", authMiddleware, validateObjectId("id", "post"), mutationLimiter, unlikePost);
+router.post("/comment/:id", authMiddleware, validateObjectId("id", "post"), mutationLimiter, commentPost);
+router.get("/comments/:id", authMiddleware, validateObjectId("id", "post"), getComments);
+router.delete("/:postId/comment/:commentId", authMiddleware, validateObjectId("postId", "post"), validateObjectId("commentId", "comment"), deleteComment);
+router.delete("/:id", authMiddleware, validateObjectId("id", "post"), deletePost);
+router.put("/:postId/comment/:commentId", authMiddleware, validateObjectId("postId", "post"), validateObjectId("commentId", "comment"), editComment);
+router.get("/:postId/likes", authMiddleware, validateObjectId("postId", "post"), getPostLikes);
+router.put("/edit/:id", authMiddleware, validateObjectId("id", "post"), editPost);
 router.get("/my-posts", authMiddleware, getMyPosts);
-router.get("/:id", getPostById);
+router.get("/:id", validateObjectId("id", "post"), getPostById);
 
 module.exports = router;

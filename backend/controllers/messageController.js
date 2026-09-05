@@ -9,6 +9,12 @@ const {
   buildPaginationFilter,
   encodePaginationCursor,
 } = require("../utils/paginationCursor");
+const {
+  INPUT_LIMITS,
+  InputValidationError,
+  isValidObjectId,
+  parsePaginationLimit,
+} = require("../utils/validation");
 
 function populateMessage(messageId) {
   return Message.findById(messageId)
@@ -26,15 +32,21 @@ function populateMessage(messageId) {
 
 async function sendMessage(req, res) {
   try {
-    const { text, replyTo, post, clientMessageId } = req.body;
+    const { text, replyTo, post, clientMessageId } = req.body || {};
 
-    if ((!text || !text.trim()) && !post) {
+    if (text !== undefined && text !== null && typeof text !== "string") {
+      return res.status(400).json({ message: "Invalid message text" });
+    }
+
+    const normalizedText = typeof text === "string" ? text.trim() : "";
+
+    if (!normalizedText && !post) {
       return res.status(400).json({
         message: "Text or post is required",
       });
     }
 
-    if (text && text.trim().length > 5000) {
+    if (normalizedText.length > INPUT_LIMITS.message) {
       return res.status(400).json({
         message: "Message is too long",
       });
@@ -55,6 +67,14 @@ async function sendMessage(req, res) {
     const senderId = req.user._id;
     const receiverId = req.params.id;
     const normalizedClientMessageId = clientMessageId?.trim() || null;
+
+    if (replyTo && !isValidObjectId(replyTo)) {
+      return res.status(400).json({ message: "Invalid reply message ID" });
+    }
+
+    if (post && !isValidObjectId(post)) {
+      return res.status(400).json({ message: "Invalid post ID" });
+    }
 
     if (senderId.toString() === receiverId.toString()) {
       return res.status(400).json({
@@ -124,6 +144,16 @@ async function sendMessage(req, res) {
           message: "Invalid reply message",
         });
       }
+
+      const replyDeletedForSender = replyMessage.deleteFor.some(
+        (item) => item.user.toString() === senderId.toString(),
+      );
+
+      if (replyMessage.isDeletedForEveryone || replyDeletedForSender) {
+        return res.status(400).json({
+          message: "Cannot reply to a deleted message",
+        });
+      }
     }
 
     if (post) {
@@ -145,7 +175,7 @@ async function sendMessage(req, res) {
         receiver: receiverId,
         conversation: conversation._id,
         clientMessageId: normalizedClientMessageId,
-        text,
+        text: normalizedText,
         replyTo: replyTo || null,
         post: post || null,
       });
@@ -215,7 +245,7 @@ async function getMessages(req, res) {
       (item) => item.user.toString() === currentUserId.toString(),
     );
 
-    const limit = Math.min(Math.max(Number(req.query.limit) || 40, 1), 100);
+    const limit = parsePaginationLimit(req.query.limit, 40, 100);
     const before = req.query.before;
     const paginationFilter = buildPaginationFilter("createdAt", before);
     const createdAtFilters = [
@@ -259,7 +289,10 @@ async function getMessages(req, res) {
         : null,
     });
   } catch (error) {
-    if (error instanceof InvalidPaginationCursorError) {
+    if (
+      error instanceof InvalidPaginationCursorError ||
+      error instanceof InputValidationError
+    ) {
       return res.status(400).json({ message: error.message });
     }
 
@@ -304,7 +337,7 @@ async function markMessagesAsSeen(req, res) {
 async function getConversations(req, res) {
   try {
     const currentUserId = req.user._id;
-    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50);
+    const limit = parsePaginationLimit(req.query.limit, 20, 50);
     const cursor = req.query.cursor;
     const userConversations = await Conversation.find({
       participants: currentUserId,
@@ -353,7 +386,10 @@ async function getConversations(req, res) {
         : null,
     });
   } catch (error) {
-    if (error instanceof InvalidPaginationCursorError) {
+    if (
+      error instanceof InvalidPaginationCursorError ||
+      error instanceof InputValidationError
+    ) {
       return res.status(400).json({ message: error.message });
     }
 
@@ -526,16 +562,16 @@ async function deleteMessageForEveryone(req, res) {
 
 async function editMessage(req, res) {
   try {
-    const { text } = req.body;
+    const { text } = req.body || {};
     const messageId = req.params.id;
 
-    if (!text || !text.trim()) {
+    if (typeof text !== "string" || !text.trim()) {
       return res.status(400).json({
         message: "Message text is required",
       });
     }
 
-    if (text.trim().length > 5000) {
+    if (text.trim().length > INPUT_LIMITS.message) {
       return res.status(400).json({
         message: "Message is too long",
       });

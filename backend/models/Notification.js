@@ -31,5 +31,13 @@ const notificationSchema = new mongoose.Schema(
 
 notificationSchema.index({ toUser: 1, createdAt: -1, _id: -1 });
 notificationSchema.index({ toUser: 1, isRead: 1 });
+notificationSchema.index(
+  { fromUser: 1, toUser: 1, post: 1, type: 1 },
+  {
+    unique: true,
+    name: "unique_like_notification",
+    partialFilterExpression: { type: "like" },
+  },
+);
 
 module.exports = mongoose.model("Notification", notificationSchema);

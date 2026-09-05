@@ -6,6 +6,7 @@ const streamifier = require("streamifier");
 const Notification = require("../models/Notification");
 const { getIO, getUserSocketIds } = require("../socket");
 const mongoose = require("mongoose");
+const { INPUT_LIMITS, escapeRegex } = require("../utils/validation");
 
 async function followUser(req, res) {
   try {
@@ -254,7 +255,30 @@ async function editProfile(req, res) {
       });
     }
 
-    const { name, bio } = req.body;
+    const { name, bio } = req.body || {};
+
+    if (name !== undefined && typeof name !== "string") {
+      return res.status(400).json({ message: "Invalid name" });
+    }
+
+    if (bio !== undefined && typeof bio !== "string") {
+      return res.status(400).json({ message: "Invalid bio" });
+    }
+
+    const normalizedName = name?.trim();
+    const normalizedBio = bio?.trim();
+
+    if (name !== undefined && !normalizedName) {
+      return res.status(400).json({ message: "Name is required" });
+    }
+
+    if (normalizedName?.length > INPUT_LIMITS.name) {
+      return res.status(400).json({ message: "Name is too long" });
+    }
+
+    if (normalizedBio?.length > INPUT_LIMITS.bio) {
+      return res.status(400).json({ message: "Bio is too long" });
+    }
 
     if (req.file) {
       const imageUrl = await uploadToCloudinary(req.file, "profilePics");
@@ -262,8 +286,8 @@ async function editProfile(req, res) {
       user.profilePic = imageUrl;
     }
 
-    if (name !== undefined) user.name = name.trim();
-    if (bio !== undefined) user.bio = bio.trim();
+    if (name !== undefined) user.name = normalizedName;
+    if (bio !== undefined) user.bio = normalizedBio;
 
     await user.save();
 
@@ -399,13 +423,25 @@ async function getProfileById(req, res) {
 
 async function searchUsers(req, res) {
   try {
-    const query = req.query.q?.trim();
+    const rawQuery = req.query.q;
+
+    if (rawQuery !== undefined && typeof rawQuery !== "string") {
+      return res.status(400).json({ message: "Invalid search query" });
+    }
+
+    const query = rawQuery?.trim();
 
     if (!query) {
       return res.status(200).json({
         usersWithFollowStatus: [],
       });
     }
+
+    if (query.length > INPUT_LIMITS.search) {
+      return res.status(400).json({ message: "Search query is too long" });
+    }
+
+    const escapedQuery = escapeRegex(query);
     const currentUser = await User.findById(req.user._id);
 
     if (!currentUser) {
@@ -417,7 +453,7 @@ async function searchUsers(req, res) {
     const users = await User.find({
       _id: { $ne: req.user._id },
       name: {
-        $regex: query,
+        $regex: escapedQuery,
         $options: "i",
       },
     }).select("name profilePic bio").limit(20);

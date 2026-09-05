@@ -4,7 +4,6 @@ const { Server } = require("socket.io");
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const mongoose = require("mongoose");
 const {
   setIO,
   addUserSocket,
@@ -14,6 +13,7 @@ const {
 } = require("./socket");
 const User = require("./models/User");
 const Message = require("./models/Message");
+const { isValidObjectId } = require("./utils/validation");
 
 const dotenv = require("dotenv");
 dotenv.config();
@@ -92,18 +92,22 @@ io.on("connection", (socket) => {
   console.log("Online Users:", getOnlineUserIds());
 
   socket.on("join-profile", (profileUserId) => {
-    if (!profileUserId) return;
+    if (!isValidObjectId(profileUserId)) return;
 
     socket.join(`profile:${profileUserId}`);
   });
 
   socket.on("leave-profile", (profileUserId) => {
-    if (!profileUserId) return;
+    if (!isValidObjectId(profileUserId)) return;
 
     socket.leave(`profile:${profileUserId}`);
   });
 
-  socket.on("typing", ({ receiverId }) => {
+  socket.on("typing", (payload) => {
+    const receiverId = payload?.receiverId;
+
+    if (!isValidObjectId(receiverId)) return;
+
     const receiverSocketIds = getUserSocketIds(receiverId);
 
     if (receiverSocketIds.length > 0) {
@@ -111,7 +115,11 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("stop-typing", ({ receiverId }) => {
+  socket.on("stop-typing", (payload) => {
+    const receiverId = payload?.receiverId;
+
+    if (!isValidObjectId(receiverId)) return;
+
     const receiverSocketIds = getUserSocketIds(receiverId);
 
     if (receiverSocketIds.length > 0) {
@@ -119,11 +127,13 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("message-seen", async ({ senderId } = {}) => {
+  socket.on("message-seen", async (payload) => {
     try {
+      const senderId = payload?.senderId;
+
       if (
-        !mongoose.isObjectIdOrHexString(senderId) ||
-        senderId.toString() === socket.userId
+        !isValidObjectId(senderId) ||
+        senderId === socket.userId
       ) {
         return;
       }
@@ -155,10 +165,14 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("message-delivered", async ({ messageId, clientMessageId }) => {
+  socket.on("message-delivered", async (payload) => {
     try {
+      const messageId = payload?.messageId;
+
+      if (!isValidObjectId(messageId)) return;
+
       const message = await Message.findById(messageId).select(
-        "sender receiver delivered",
+        "sender receiver delivered clientMessageId",
       );
 
       if (!message || message.receiver.toString() !== socket.userId) {
@@ -175,7 +189,7 @@ io.on("connection", (socket) => {
       if (senderSocketIds.length > 0) {
         io.to(senderSocketIds).emit("message-delivered", {
           messageId: message._id,
-          clientMessageId,
+          clientMessageId: message.clientMessageId,
         });
       }
     } catch (error) {

@@ -3,6 +3,7 @@ const router = express.Router();
 
 const authMiddleware = require("../middleware/authMiddleware");
 const { mutationLimiter } = require("../middleware/rateLimiters");
+const validateObjectId = require("../middleware/validateObjectId");
 const {
   getMessages,
   sendMessage,
@@ -15,15 +16,16 @@ const {
 } = require("../controllers/messageController");
 
 router.get("/conversations", authMiddleware, getConversations);
-router.get("/:id", authMiddleware, getMessages);
-router.post("/:id", authMiddleware, mutationLimiter, sendMessage);
-router.put("/seen/:id", authMiddleware, markMessagesAsSeen);
-router.put("/edit/:id", authMiddleware, editMessage);
-router.delete("/conversation/:id", authMiddleware, deleteConversation);
-router.delete("/delete-for-me/:id", authMiddleware, deleteMessageForMe);
+router.get("/:id", authMiddleware, validateObjectId("id", "user"), getMessages);
+router.post("/:id", authMiddleware, validateObjectId("id", "user"), mutationLimiter, sendMessage);
+router.put("/seen/:id", authMiddleware, validateObjectId("id", "user"), markMessagesAsSeen);
+router.put("/edit/:id", authMiddleware, validateObjectId("id", "message"), editMessage);
+router.delete("/conversation/:id", authMiddleware, validateObjectId("id", "user"), deleteConversation);
+router.delete("/delete-for-me/:id", authMiddleware, validateObjectId("id", "message"), deleteMessageForMe);
 router.delete(
   "/delete-for-everyone/:id",
   authMiddleware,
+  validateObjectId("id", "message"),
   deleteMessageForEveryone,
 );
 

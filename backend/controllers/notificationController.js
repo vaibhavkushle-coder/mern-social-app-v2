@@ -4,10 +4,16 @@ const {
   buildPaginationFilter,
   encodePaginationCursor,
 } = require("../utils/paginationCursor");
+const {
+  INPUT_LIMITS,
+  InputValidationError,
+  isValidObjectId,
+  parsePaginationLimit,
+} = require("../utils/validation");
 
 async function getNotifications(req, res) {
   try {
-    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50);
+    const limit = parsePaginationLimit(req.query.limit, 20, 50);
     const cursor = req.query.cursor;
     const notifications = await Notification.find({
       toUser: req.user._id,
@@ -55,7 +61,10 @@ async function getNotifications(req, res) {
           : null,
     });
   } catch (error) {
-    if (error instanceof InvalidPaginationCursorError) {
+    if (
+      error instanceof InvalidPaginationCursorError ||
+      error instanceof InputValidationError
+    ) {
       return res.status(400).json({ message: error.message });
     }
 
@@ -93,8 +102,23 @@ async function markAllAsRead(req, res) {
 
 async function deleteSelectedNotifications(req, res) {
   try {
+    const notificationIds = req.body?.notificationIds;
+
+    if (
+      !Array.isArray(notificationIds) ||
+      notificationIds.length === 0 ||
+      notificationIds.length > INPUT_LIMITS.notificationBatch ||
+      !notificationIds.every(isValidObjectId)
+    ) {
+      return res.status(400).json({
+        message: "Invalid notification IDs",
+      });
+    }
+
+    const uniqueNotificationIds = [...new Set(notificationIds)];
+
     await Notification.deleteMany({
-      _id: { $in: req.body.notificationIds },
+      _id: { $in: uniqueNotificationIds },
       toUser: req.user._id,
     });
 
