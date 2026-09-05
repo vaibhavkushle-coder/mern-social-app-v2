@@ -69,6 +69,8 @@ function Chat() {
   const requestVersion = useRef(0);
   const olderRequestRef = useRef(false);
   const messageOwnerUserIdRef = useRef(null);
+  const messageCacheRef = useRef(messageCache);
+  messageCacheRef.current = messageCache;
   const [messageMeta, setMessageMeta] = useState({
     hasMore: false,
     nextCursor: null,
@@ -142,13 +144,15 @@ function Chat() {
   }
 
   useEffect(() => {
+    const version = ++requestVersion.current;
+    const isCurrentVersion = () => requestVersion.current === version;
     const currentUserId = user?._id?.toString() || null;
     const accountChanged = messageOwnerUserIdRef.current !== currentUserId;
 
+    olderRequestRef.current = false;
+
     if (accountChanged) {
       messageOwnerUserIdRef.current = currentUserId;
-      requestVersion.current += 1;
-      olderRequestRef.current = false;
       setMessages([]);
       setMessageMeta({ hasMore: false, nextCursor: null });
       setChatUser(null);
@@ -163,23 +167,113 @@ function Chat() {
       setText("");
     }
 
-    const cached = accountChanged ? null : messageCache[id];
+    const cached = accountChanged ? null : messageCacheRef.current[id];
     if (cached?.messages?.length) {
       setMessages(cached.messages);
       setMessageMeta(cached.meta);
       setLoadingMessage(false);
     } else setMessages([]);
+
+    async function fetchInitialMessages() {
+      try {
+        if (!cached?.messages?.length && isCurrentVersion()) {
+          setLoadingMessage(true);
+        }
+
+        const response = await getMessages(id);
+
+        if (!isCurrentVersion()) return false;
+
+        setMessages((prev) => {
+          if (!isCurrentVersion()) return prev;
+
+          const serverMessageIds = new Set(
+            response.data.messages.map((message) => message._id),
+          );
+          const localMessages = prev.filter(
+            (message) =>
+              message.clientMessageId &&
+              !serverMessageIds.has(message._id) &&
+              message.receiver?._id?.toString() === id?.toString(),
+          );
+
+          const merged = [...response.data.messages, ...localMessages];
+          setMessageCache((cache) => {
+            if (!isCurrentVersion()) return cache;
+
+            return {
+              ...cache,
+              [id]: {
+                messages: merged,
+                meta: {
+                  hasMore: response.data.hasMore,
+                  nextCursor: response.data.nextCursor,
+                },
+                fetchedAt: Date.now(),
+              },
+            };
+          });
+          return merged;
+        });
+
+        if (!isCurrentVersion()) return false;
+
+        setMessageMeta({
+          hasMore: response.data.hasMore,
+          nextCursor: response.data.nextCursor,
+        });
+
+        return true;
+      } catch (error) {
+        if (isCurrentVersion()) {
+          console.log(error);
+        }
+
+        return isCurrentVersion();
+      } finally {
+        if (isCurrentVersion()) {
+          setLoadingMessage(false);
+        }
+      }
+    }
+
+    async function fetchCurrentChatUser() {
+      try {
+        const response = await getProfileById(id);
+
+        if (!isCurrentVersion()) return;
+
+        setChatUser(response.data.user);
+      } catch (error) {
+        if (isCurrentVersion()) {
+          console.log(error);
+        }
+      }
+    }
+
     async function handleChatOpen() {
-      await fetchMessages();
+      const isActiveRequest = await fetchInitialMessages();
+
+      if (!isActiveRequest || !isCurrentVersion()) return;
+
       await markMessageAsSeen(id);
+
+      if (!isCurrentVersion()) return;
 
       socket.emit("message-seen", {
         senderId: id,
       });
     }
+
     handleChatOpen();
-    fetchChatUser();
-  }, [id, user?._id]);
+    fetchCurrentChatUser();
+
+    return () => {
+      if (requestVersion.current === version) {
+        requestVersion.current += 1;
+      }
+    };
+  }, [id, user?._id, socket, setMessageCache]);
 
   useEffect(() => {
     async function handleReceiveMessage(message) {
@@ -327,48 +421,6 @@ function Chat() {
       [id]: { messages, meta: messageMeta, fetchedAt: Date.now() },
     }));
   }, [id, messages, messageMeta, setMessageCache]);
-
-  async function fetchMessages() {
-    const version = ++requestVersion.current;
-    try {
-      if (!messageCache[id]?.messages?.length) setLoadingMessage(true);
-      const response = await getMessages(id);
-      if (version !== requestVersion.current) return;
-      setMessages((prev) => {
-        const serverMessageIds = new Set(
-          response.data.messages.map((message) => message._id),
-        );
-        const localMessages = prev.filter(
-          (message) =>
-            message.clientMessageId &&
-            !serverMessageIds.has(message._id) &&
-            message.receiver?._id?.toString() === id?.toString(),
-        );
-
-        const merged = [...response.data.messages, ...localMessages];
-        setMessageCache((cache) => ({
-          ...cache,
-          [id]: {
-            messages: merged,
-            meta: {
-              hasMore: response.data.hasMore,
-              nextCursor: response.data.nextCursor,
-            },
-            fetchedAt: Date.now(),
-          },
-        }));
-        return merged;
-      });
-      setMessageMeta({
-        hasMore: response.data.hasMore,
-        nextCursor: response.data.nextCursor,
-      });
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setLoadingMessage(false);
-    }
-  }
 
   async function handleSend() {
     if (!text.trim()) {
@@ -521,48 +573,59 @@ function Chat() {
       olderRequestRef.current
     )
       return;
+
+    const version = requestVersion.current;
+    const chatId = id;
+    const cursor = messageMeta.nextCursor;
     olderRequestRef.current = true;
     const container = messagesContainerRef.current;
     const oldHeight = container?.scrollHeight || 0;
     try {
-      const response = await getMessages(id, messageMeta.nextCursor);
+      const response = await getMessages(chatId, cursor);
+
+      if (version !== requestVersion.current) return;
+
       setMessages((current) => {
+        if (version !== requestVersion.current) return current;
+
         const ids = new Set(current.map((message) => message._id));
         const merged = [
           ...response.data.messages.filter((message) => !ids.has(message._id)),
           ...current,
         ];
-        setMessageCache((cache) => ({
-          ...cache,
-          [id]: {
-            messages: merged,
-            meta: {
-              hasMore: response.data.hasMore,
-              nextCursor: response.data.nextCursor,
+        setMessageCache((cache) => {
+          if (version !== requestVersion.current) return cache;
+
+          return {
+            ...cache,
+            [chatId]: {
+              messages: merged,
+              meta: {
+                hasMore: response.data.hasMore,
+                nextCursor: response.data.nextCursor,
+              },
+              fetchedAt: Date.now(),
             },
-            fetchedAt: Date.now(),
-          },
-        }));
+          };
+        });
         return merged;
       });
+
+      if (version !== requestVersion.current) return;
+
       setMessageMeta({
         hasMore: response.data.hasMore,
         nextCursor: response.data.nextCursor,
       });
       requestAnimationFrame(() => {
-        if (container) container.scrollTop = container.scrollHeight - oldHeight;
+        if (version === requestVersion.current && container) {
+          container.scrollTop = container.scrollHeight - oldHeight;
+        }
       });
     } finally {
-      olderRequestRef.current = false;
-    }
-  }
-
-  async function fetchChatUser() {
-    try {
-      const response = await getProfileById(id);
-      setChatUser(response.data.user);
-    } catch (error) {
-      console.log(error);
+      if (version === requestVersion.current) {
+        olderRequestRef.current = false;
+      }
     }
   }
 
