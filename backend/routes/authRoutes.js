@@ -11,6 +11,6 @@ const {
 
 router.post("/register", registerLimiter, register);
 router.post("/login", loginLimiter, login);
-router.post("/logout",authMiddleware,logout);
+router.post("/logout", authMiddleware.allowRevoked, logout);
 
 module.exports = router;

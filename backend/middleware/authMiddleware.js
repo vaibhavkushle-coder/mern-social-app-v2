@@ -1,7 +1,9 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const RevokedToken = require("../models/RevokedToken");
+const { hashToken } = require("../utils/tokenUtils");
 
-async function authMiddleware(req, res, next) {
+async function authenticateRequest(req, res, next, allowRevoked = false) {
   try {
     const authHeader = req.headers.authorization;
 
@@ -23,7 +25,22 @@ async function authMiddleware(req, res, next) {
       });
     }
 
+    const tokenHash = hashToken(token);
+    const isRevoked = Boolean(await RevokedToken.exists({ tokenHash }));
+
+    if (isRevoked && !allowRevoked) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
     req.user = user;
+    req.auth = {
+      token,
+      tokenHash,
+      expiresAt: new Date(decoded.exp * 1000),
+      isRevoked,
+    };
 
     next();
   } catch (error) {
@@ -34,5 +51,13 @@ async function authMiddleware(req, res, next) {
     });
   }
 }
+
+function authMiddleware(req, res, next) {
+  return authenticateRequest(req, res, next);
+}
+
+authMiddleware.allowRevoked = function allowRevoked(req, res, next) {
+  return authenticateRequest(req, res, next, true);
+};
 
 module.exports = authMiddleware;

@@ -2,6 +2,12 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { INPUT_LIMITS } = require("../utils/validation");
+const RevokedToken = require("../models/RevokedToken");
+const { getIO } = require("../socket");
+const {
+  createTokenId,
+  getTokenSocketRoom,
+} = require("../utils/tokenUtils");
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -60,9 +66,13 @@ async function register(req, res) {
       password: hashedPassword,
     });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    const token = jwt.sign(
+      { id: user._id, jti: createTokenId() },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      },
+    );
 
     const safeUser = user.toObject();
     delete safeUser.password;
@@ -114,9 +124,13 @@ async function login(req, res) {
       });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    const token = jwt.sign(
+      { id: user._id, jti: createTokenId() },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      },
+    );
 
     const safeUser = user.toObject();
     delete safeUser.password;
@@ -137,6 +151,24 @@ async function login(req, res) {
 
 async function logout(req, res) {
   try {
+    const { tokenHash, expiresAt } = req.auth;
+
+    if (Number.isNaN(expiresAt.getTime())) {
+      throw new Error("Authenticated token is missing a valid expiry");
+    }
+
+    await RevokedToken.updateOne(
+      { tokenHash },
+      { $setOnInsert: { tokenHash, expiresAt } },
+      { upsert: true },
+    );
+
+    const io = getIO();
+
+    if (io) {
+      io.in(getTokenSocketRoom(tokenHash)).disconnectSockets(true);
+    }
+
     res.status(200).json({
       message: "Logout successful",
     });

@@ -13,7 +13,9 @@ const {
 } = require("./socket");
 const User = require("./models/User");
 const Message = require("./models/Message");
+const RevokedToken = require("./models/RevokedToken");
 const { isValidObjectId } = require("./utils/validation");
+const { hashToken, getTokenSocketRoom } = require("./utils/tokenUtils");
 
 const dotenv = require("dotenv");
 dotenv.config();
@@ -72,15 +74,39 @@ io.use(async (socket, next) => {
       return next(new Error("Unauthorized"));
     }
 
+    const tokenHash = hashToken(token);
+
+    if (await RevokedToken.exists({ tokenHash })) {
+      return next(new Error("Unauthorized"));
+    }
+
     socket.userId = user._id.toString();
+    socket.tokenHash = tokenHash;
+    socket.tokenId = decoded.jti || null;
     next();
   } catch (error) {
     next(new Error("Unauthorized"));
   }
 });
 
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
   console.log("✅ User Connected:", socket.id);
+
+  socket.join(getTokenSocketRoom(socket.tokenHash));
+
+  let isRevoked;
+
+  try {
+    isRevoked = await RevokedToken.exists({ tokenHash: socket.tokenHash });
+  } catch {
+    socket.disconnect(true);
+    return;
+  }
+
+  if (isRevoked) {
+    socket.disconnect(true);
+    return;
+  }
 
   const becameOnline = addUserSocket(socket.userId, socket.id);
 
@@ -242,7 +268,7 @@ app.get("/", (req, res) => {
 
 async function startServer() {
   await connectDB();
-  await Message.init();
+  await Promise.all([Message.init(), RevokedToken.init()]);
 
   server.listen(PORT, () => {
     console.log(`Server running on ${PORT}`);

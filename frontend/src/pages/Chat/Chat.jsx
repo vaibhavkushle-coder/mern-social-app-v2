@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import {
   sendMessage,
@@ -23,8 +23,9 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useSocket } from "../../hooks/useSocket";
 import { useToast } from "../../hooks/useToast";
-import EmojiPicker from "emoji-picker-react";
 import { useConversation } from "../../hooks/useConversation";
+
+const EmojiPicker = lazy(() => import("emoji-picker-react"));
 
 function Chat() {
   const [messages, setMessages] = useState([]);
@@ -1343,16 +1344,18 @@ z-50 overflow-hidden"
                 className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50"
                 onClick={(e) => e.stopPropagation()}
               >
-                <EmojiPicker
-                  onEmojiClick={(emojiObject) => {
-                    setText((prev) => prev + emojiObject.emoji);
-                    setShowEmojiPicker(false);
-                    inputRef.current?.focus();
-                  }}
-                  theme="dark"
-                  width={Math.min(300, window.innerWidth - 32)}
-                  height={380}
-                />
+                <Suspense fallback={null}>
+                  <EmojiPicker
+                    onEmojiClick={(emojiObject) => {
+                      setText((prev) => prev + emojiObject.emoji);
+                      setShowEmojiPicker(false);
+                      inputRef.current?.focus();
+                    }}
+                    theme="dark"
+                    width={Math.min(300, window.innerWidth - 32)}
+                    height={380}
+                  />
+                </Suspense>
               </div>
             )}
 

@@ -1,24 +1,26 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import PublicRoute from "./components/PublicRoute/PublicRoute";
 import Toast from "./components/Toast/Toast";
 
-import Login from "./pages/Login/Login";
-import Register from "./pages/Register/Register";
-import Home from "./pages/Home/Home";
-import Profile from "./pages/Profile/Profile";
-import CreatePost from "./pages/CreatePost/CreatePost";
-import UserProfile from "./pages/UserProfile/UserProfile";
-import Search from "./pages/Search/Search";
-import Notification from "./pages/Notification/Notification";
-import Chat from "./pages/Chat/Chat";
-import Messages from "./pages/Messages;/Messages";
-import SavePosts from "./pages/SavedPosts/SavedPost";
+const Login = lazy(() => import("./pages/Login/Login"));
+const Register = lazy(() => import("./pages/Register/Register"));
+const Home = lazy(() => import("./pages/Home/Home"));
+const Profile = lazy(() => import("./pages/Profile/Profile"));
+const CreatePost = lazy(() => import("./pages/CreatePost/CreatePost"));
+const UserProfile = lazy(() => import("./pages/UserProfile/UserProfile"));
+const Search = lazy(() => import("./pages/Search/Search"));
+const Notification = lazy(() => import("./pages/Notification/Notification"));
+const Chat = lazy(() => import("./pages/Chat/Chat"));
+const Messages = lazy(() => import("./pages/Messages;/Messages"));
+const SavePosts = lazy(() => import("./pages/SavedPosts/SavedPost"));
 
 function App() {
   return (
     <>
-      <Routes>
+      <Suspense fallback={<div className="min-h-screen bg-[#0f1117]" />}>
+        <Routes>
         <Route
           path="/login"
           element={
@@ -110,7 +112,8 @@ function App() {
             </ProtectedRoute>
           }
         />
-      </Routes>
+        </Routes>
+      </Suspense>
       <Toast />
     </>
   );

@@ -11,6 +11,7 @@ import {
 import { useSocket } from "../../hooks/useSocket";
 import { unfollowUser, removeFollower } from "../../services/userService";
 import { useToast } from "../../hooks/useToast";
+import { logout } from "../../services/authService";
 
 function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
   const [isFollowersOpen, setIsFollowersOpen] = useState(false);
@@ -115,12 +116,18 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
     };
   }, [isFollowersOpen, isFollowingOpen]);
 
-  function handleLogout() {
-    socket.disconnect();
-    socket.auth = {};
-    localStorage.removeItem("token");
-    setUser(null);
-    navigate("/login", { replace: true });
+  async function handleLogout() {
+    try {
+      await logout();
+    } catch {
+      console.warn("Server logout failed; clearing the local session");
+    } finally {
+      socket.disconnect();
+      socket.auth = {};
+      localStorage.removeItem("token");
+      setUser(null);
+      navigate("/login", { replace: true });
+    }
   }
 
   function handleMenuToggle(e) {
