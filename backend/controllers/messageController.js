@@ -15,6 +15,7 @@ const {
   isValidObjectId,
   parsePaginationLimit,
 } = require("../utils/validation");
+const logger = require("../utils/logger");
 
 function populateMessage(messageId) {
   return Message.findById(messageId)
@@ -216,7 +217,7 @@ async function sendMessage(req, res) {
       message: populatedMessage,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("message.send.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -296,7 +297,7 @@ async function getMessages(req, res) {
       return res.status(400).json({ message: error.message });
     }
 
-    console.log(error);
+    logger.error("message.list.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -326,7 +327,7 @@ async function markMessagesAsSeen(req, res) {
       message: "Messages marked as seen",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("message.seen.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -393,7 +394,7 @@ async function getConversations(req, res) {
       return res.status(400).json({ message: error.message });
     }
 
-    console.log(error);
+    logger.error("conversation.list.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -437,7 +438,7 @@ async function deleteConversation(req, res) {
       message: "Conversation deleted successfully",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("conversation.delete.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -485,7 +486,7 @@ async function deleteMessageForMe(req, res) {
       message: "Message deleted for you",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("message.delete_for_me.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -552,7 +553,7 @@ async function deleteMessageForEveryone(req, res) {
       message: "Message deleted for everyone",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("message.delete_for_everyone.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -644,7 +645,7 @@ async function editMessage(req, res) {
       message: updatedMessage,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("message.edit.failed", error);
 
     res.status(500).json({
       message: "Server Error",

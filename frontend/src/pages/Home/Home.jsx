@@ -15,6 +15,7 @@ import Navbar from "../../components/Navbar/Navbar";
 import { useToast } from "../../hooks/useToast";
 import SuggestedUsers from "../../components/SuggestedUsers/SuggestedUsers";
 import { getPostById } from "../../services/postService";
+import logger from "../../utils/logger";
 
 function Home() {
   const [error, setError] = useState("");
@@ -66,7 +67,7 @@ function Home() {
           await fetchPosts();
         }
       } catch (error) {
-        console.log(error);
+        logger.error("home.feed_load.failed", error);
         setError("😔 Failed to load post");
       }
     }
@@ -122,7 +123,7 @@ function Home() {
         }),
       );
     } catch (error) {
-      console.log(error.response?.data || error);
+      logger.error("post.like.failed", error);
       showToast("Failed to like post", "error");
     } finally {
       setLikeLoading((prev) => ({
@@ -154,7 +155,7 @@ function Home() {
         }),
       );
     } catch (error) {
-      console.log(error.response?.data || error);
+      logger.error("post.unlike.failed", error);
       showToast("Failed to unlike post", "error");
     } finally {
       setLikeLoading((prev) => ({
@@ -181,7 +182,7 @@ function Home() {
       );
       showToast("Comment added successfully 💬", "success");
     } catch (error) {
-      console.log(error);
+      logger.error("post.comment.failed", error);
       showToast("Failed to add comment 💬", "error");
     }
   }
@@ -200,7 +201,7 @@ function Home() {
       setPosts((prevPosts) => prevPosts.filter((post) => post._id !== postId));
       showToast("Post deleted successfully 🗑️", "success");
     } catch (error) {
-      console.log(error);
+      logger.error("post.delete.failed", error);
       showToast("Failed to delete post 🗑️", "error");
     }
   }
@@ -231,7 +232,7 @@ function Home() {
       );
       showToast("Comment deleted successfully 🗑️", "success");
     } catch (error) {
-      console.log(error);
+      logger.error("comment.delete.failed", error);
       showToast("Failed to delete comment 🗑️", "error");
     }
   }
@@ -253,7 +254,7 @@ function Home() {
       );
       showToast("Comment updated successfully ✏️", "success");
     } catch (error) {
-      console.log(error);
+      logger.error("comment.edit.failed", error);
       showToast("Failed to update comment ✏️", "error");
     }
   }
@@ -274,7 +275,7 @@ function Home() {
       );
       showToast("Post updated successfully ✏️", "success");
     } catch (error) {
-      console.log(error);
+      logger.error("post.edit.failed", error);
       showToast("Failed to update post ✏️", "error");
     }
   }

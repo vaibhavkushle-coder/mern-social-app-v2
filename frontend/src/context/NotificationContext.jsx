@@ -51,7 +51,7 @@ export function NotificationProvider({ children }) {
         return response;
       })
       .catch((error) => {
-        console.log(error);
+      logger.error("notification.fetch.failed", error);
         throw error;
       })
       .finally(() => {
@@ -161,7 +161,7 @@ export function NotificationProvider({ children }) {
         })),
       );
     } catch (error) {
-      console.log(error);
+      logger.error("notification.read_all.failed", error);
     }
   }, []);
 
@@ -181,7 +181,7 @@ export function NotificationProvider({ children }) {
         ),
       );
     } catch (error) {
-      console.log(error);
+      logger.error("notification.delete_selected.failed", error);
     }
   }
   return (
@@ -200,3 +200,4 @@ export function NotificationProvider({ children }) {
     </NotificationContext.Provider>
   );
 }
+import logger from "../utils/logger";

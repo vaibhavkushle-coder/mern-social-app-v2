@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { isValidJwt } from "../../utils/auth";
+import logger from "../../utils/logger";
 
 function ProtectedRoute({ children }) {
   try {
@@ -12,7 +13,7 @@ function ProtectedRoute({ children }) {
 
     return children;
   } catch (error) {
-    console.log(error);
+    logger.error("route.protected_auth_check.failed", error);
     return <Navigate to="/login" replace />;
   }
 }

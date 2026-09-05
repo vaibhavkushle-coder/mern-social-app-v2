@@ -63,7 +63,7 @@ function Login() {
         localStorage.removeItem("token");
       }
 
-      console.log(error);
+      logger.error("auth.login.failed", error);
 
       showToast(
         error?.response?.data?.message ||
@@ -190,3 +190,4 @@ function Login() {
 }
 
 export default Login;
+import logger from "../../utils/logger";

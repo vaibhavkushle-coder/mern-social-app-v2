@@ -65,7 +65,7 @@ function Messages() {
       setSelectedIds([]);
       setSelectMode(false);
     } catch (error) {
-      console.log(error);
+      logger.error("conversation.delete.failed", error);
     }
   }
 
@@ -81,7 +81,7 @@ function Messages() {
       try {
         await fetchConversations();
       } catch (error) {
-        console.log(error);
+      logger.error("conversation.refresh.failed", error);
       }
     }
 
@@ -606,3 +606,4 @@ function Messages() {
 }
 
 export default Messages;
+import logger from "../../utils/logger";

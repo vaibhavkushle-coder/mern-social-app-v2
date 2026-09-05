@@ -40,7 +40,7 @@ export function ConversationProvider({ children }) {
         return response;
       })
       .catch((error) => {
-        console.log(error);
+      logger.error("conversation.fetch.failed", error);
         throw error;
       })
       .finally(() => {
@@ -111,3 +111,4 @@ export function ConversationProvider({ children }) {
     </ConversationContext.Provider>
   );
 }
+import logger from "../utils/logger";

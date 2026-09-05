@@ -18,6 +18,7 @@ const {
   InputValidationError,
   parsePaginationLimit,
 } = require("../utils/validation");
+const logger = require("../utils/logger");
 
 async function createPost(req, res) {
   try {
@@ -57,7 +58,7 @@ async function createPost(req, res) {
       post: updatedPost,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("post.create.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -99,7 +100,7 @@ async function getAllPosts(req, res) {
       return res.status(400).json({ message: error.message });
     }
 
-    console.log(error);
+    logger.error("post.list.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -127,7 +128,7 @@ async function getPostById(req, res) {
       post,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("post.get.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -225,7 +226,7 @@ async function likePost(req, res) {
       post: updatedPost,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("post.like.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -306,7 +307,7 @@ async function unlikePost(req, res) {
       post: updatedPost,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("post.unlike.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -375,7 +376,7 @@ async function commentPost(req, res) {
       post: updatedPost,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("comment.create.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -397,7 +398,7 @@ async function getComments(req, res) {
       comments: post.comments,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("comment.list.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -443,7 +444,7 @@ async function deleteComment(req, res) {
       message: "Comment deleted successfully",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("comment.delete.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -489,7 +490,7 @@ async function deletePost(req, res) {
       message: "Post deleted successfully",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("post.delete.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -553,7 +554,7 @@ async function editComment(req, res) {
       post: updatedPost,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("comment.edit.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -578,7 +579,7 @@ async function getPostLikes(req, res) {
       likes: post.likes,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("post.likes.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -629,7 +630,7 @@ async function editPost(req, res) {
       post: updatedPost,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("post.edit.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -668,7 +669,7 @@ async function getMyPosts(req, res) {
       return res.status(400).json({ message: error.message });
     }
 
-    console.log(error);
+    logger.error("post.my_posts.failed", error);
 
     res.status(500).json({
       message: "Server Error",

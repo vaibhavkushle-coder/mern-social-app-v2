@@ -12,6 +12,7 @@ import { useSocket } from "../../hooks/useSocket";
 import { removeFollower } from "../../services/userService";
 import { useToast } from "../../hooks/useToast";
 import { logout } from "../../services/authService";
+import logger from "../../utils/logger";
 
 function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
   const [isFollowersOpen, setIsFollowersOpen] = useState(false);
@@ -119,7 +120,7 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
     try {
       await logout();
     } catch {
-      console.warn("Server logout failed; clearing the local session");
+      logger.warn("auth.logout.server_failed");
     } finally {
       socket.disconnect();
       socket.auth = {};
@@ -140,7 +141,7 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
 
       await removeFollower(userId);
     } catch (error) {
-      console.log(error);
+      logger.error("user.remove_follower.failed", error);
 
       showToast(
         error.response?.data?.message || "Failed to remove follower",

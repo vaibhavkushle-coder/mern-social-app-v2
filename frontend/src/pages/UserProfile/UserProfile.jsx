@@ -32,7 +32,7 @@ function UserProfile() {
         setUser(response.data.user);
         setPosts(response.data.posts);
       } catch (error) {
-        console.log(error);
+      logger.error("user.profile.failed", error);
       }
     }
     fetchProfile();
@@ -125,3 +125,4 @@ function UserProfile() {
 }
 
 export default UserProfile;
+import logger from "../../utils/logger";

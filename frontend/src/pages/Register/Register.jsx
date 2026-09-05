@@ -60,7 +60,7 @@ function Register() {
 
       showToast("Registration successful 🎉", "success");
     } catch (error) {
-      console.log(error);
+      logger.error("auth.register.failed", error);
 
       showToast(
         error?.response?.data?.message ||
@@ -203,3 +203,4 @@ function Register() {
 }
 
 export default Register;
+import logger from "../../utils/logger";

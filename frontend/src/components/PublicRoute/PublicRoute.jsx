@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { isValidJwt } from "../../utils/auth";
+import logger from "../../utils/logger";
 
 function PublicRoute({ children }){
     try{
@@ -17,7 +18,7 @@ function PublicRoute({ children }){
         return children;
 
     }catch(error){
-        console.log(error);
+        logger.error("route.public_auth_check.failed", error);
         return children;
     }
 }

@@ -4,10 +4,8 @@ const jwt = require("jsonwebtoken");
 const { INPUT_LIMITS } = require("../utils/validation");
 const RevokedToken = require("../models/RevokedToken");
 const { getIO } = require("../socket");
-const {
-  createTokenId,
-  getTokenSocketRoom,
-} = require("../utils/tokenUtils");
+const { createTokenId, getTokenSocketRoom } = require("../utils/tokenUtils");
+const logger = require("../utils/logger");
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -83,7 +81,7 @@ async function register(req, res) {
       user: safeUser,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("auth.register.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -141,7 +139,7 @@ async function login(req, res) {
       user: safeUser,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("auth.login.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -173,7 +171,7 @@ async function logout(req, res) {
       message: "Logout successful",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("auth.logout.failed", error);
 
     res.status(500).json({
       message: "Server Error",

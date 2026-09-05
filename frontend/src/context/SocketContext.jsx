@@ -26,7 +26,6 @@ export function SocketProvider({ children }) {
     });
 
     socket.on("user-offline", ({ userId, lastSeen }) => {
-      console.log("OFFLINE DATA:", userId, lastSeen);
       setOnlineUsers((prev) => prev.filter((id) => id !== userId));
 
       setLastSeenUsers((prev) => ({

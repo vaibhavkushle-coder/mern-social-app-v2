@@ -61,7 +61,7 @@ function UserListModal({
         showToast("User followed successfully", "success");
       }
     } catch (error) {
-      console.log(error);
+      logger.error("user.follow_toggle.failed", error);
 
       showToast(
         error.response?.data?.message || "Something went wrong",
@@ -595,3 +595,4 @@ function UserListModal({
 }
 
 export default UserListModal;
+import logger from "../../utils/logger";

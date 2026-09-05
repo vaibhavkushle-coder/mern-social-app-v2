@@ -28,7 +28,7 @@ export function UserProvider({ children }) {
         return response;
       })
       .catch((error) => {
-        console.log(error);
+      logger.error("user.fetch.failed", error);
         throw error;
       })
       .finally(() => {
@@ -53,7 +53,7 @@ export function UserProvider({ children }) {
       await editProfileService(formData);
       await fetchUser();
     } catch (error) {
-      console.log(error);
+      logger.error("user.edit_profile.failed", error);
     }
   }
   return (
@@ -62,3 +62,4 @@ export function UserProvider({ children }) {
     </UserContext.Provider>
   );
 }
+import logger from "../utils/logger";

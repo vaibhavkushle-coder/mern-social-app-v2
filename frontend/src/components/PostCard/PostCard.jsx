@@ -27,6 +27,7 @@ import { useToast } from "../../hooks/useToast";
 import { reportPost } from "../../services/reportService";
 import { useSocket } from "../../hooks/useSocket";
 import { useConversation } from "../../hooks/useConversation";
+import logger from "../../utils/logger";
 
 function PostCard({
   post,
@@ -147,7 +148,7 @@ function PostCard({
 
       setShowLikes(true);
     } catch (error) {
-      console.log(error);
+      logger.error("post.likes.failed", error);
     }
   }
 
@@ -183,7 +184,7 @@ function PostCard({
         setIsClosing(false);
       }, 350);
     } catch (error) {
-      console.log(error);
+      logger.error("post.edit.failed", error);
     }
   }
   async function handleSaveBookmark() {
@@ -198,7 +199,7 @@ function PostCard({
         setIsSave(true);
       }
     } catch (error) {
-      console.log(error);
+      logger.error("post.save_toggle.failed", error);
     } finally {
       setSavingPost(false);
     }
@@ -212,10 +213,9 @@ function PostCard({
     }
     try {
       const response = await searchUsers(value);
-      console.log("SEARCH RESPONSE:", response.data);
       setShareUsers(response.data.usersWithFollowStatus || []);
     } catch (error) {
-      console.log(error);
+      logger.error("post.share_search.failed", error);
       setShareUsers([]);
     }
   }
@@ -231,7 +231,7 @@ function PostCard({
       setShowShareModal(false);
       await fetchConversations();
     } catch (error) {
-      console.log(error);
+      logger.error("post.share_send.failed", error);
       showToast("Failed to share post", "error");
     }
   }
@@ -246,7 +246,7 @@ function PostCard({
 
       setConversations(response.data.conversations || []);
     } catch (error) {
-      console.log(error);
+      logger.error("conversation.share_list.failed", error);
       setConversations([]);
     } finally {
       setLoadingShareUsers(false);
@@ -378,7 +378,7 @@ function PostCard({
 
                       showToast("Post reported successfully 🚩", "success");
                     } catch (error) {
-                      console.log(error);
+                      logger.error("post.report.failed", error);
 
                       if (error.response?.data?.message) {
                         showToast(error.response.data.message, "error");
@@ -409,7 +409,7 @@ function PostCard({
 
                       showToast("Post link copied 🔗", "success");
                     } catch (error) {
-                      console.log(error);
+                      logger.error("post.copy_link.failed", error);
 
                       showToast("Failed to copy link", "error");
                     }

@@ -7,6 +7,7 @@ const Notification = require("../models/Notification");
 const { getIO, getUserSocketIds } = require("../socket");
 const mongoose = require("mongoose");
 const { INPUT_LIMITS, escapeRegex } = require("../utils/validation");
+const logger = require("../utils/logger");
 
 async function followUser(req, res) {
   try {
@@ -95,7 +96,7 @@ async function followUser(req, res) {
       message: "User followed successfully",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("user.follow.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -170,7 +171,7 @@ async function unfollowUser(req, res) {
       message: "User unfollowed successfully",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("user.unfollow.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -237,7 +238,7 @@ async function removeFollower(req, res) {
       message: "Follower removed successfully",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("user.remove_follower.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -298,7 +299,7 @@ async function editProfile(req, res) {
       user: updatedUser,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("user.edit_profile.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -315,8 +316,6 @@ async function uploadProfilePic(req, res) {
         message: "User not found",
       });
     }
-
-    console.log(req.file);
 
     if (!req.file) {
       return res.status(400).json({
@@ -350,7 +349,7 @@ async function uploadProfilePic(req, res) {
 
     streamifier.createReadStream(req.file.buffer).pipe(stream);
   } catch (error) {
-    console.log(error);
+    logger.error("user.upload_profile_picture.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -382,7 +381,7 @@ async function getUserProfile(req, res) {
       posts,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("user.profile.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -413,7 +412,7 @@ async function getProfileById(req, res) {
       posts,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("user.profile_by_id.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -469,7 +468,7 @@ async function searchUsers(req, res) {
       usersWithFollowStatus,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("user.search.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -517,7 +516,7 @@ async function savePost(req, res) {
       message: "Post saved successfully",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("user.save_post.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -545,7 +544,7 @@ async function unsavePost(req, res) {
       message: "Post unsaved successfully",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("user.unsave_post.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -554,7 +553,6 @@ async function unsavePost(req, res) {
 }
 
 async function getSuggestedUsers(req, res) {
-  console.log("🔥 getSuggestedUsers CALLED");
   try {
     const currentUser = await User.findById(req.user._id).select("following");
 
@@ -599,20 +597,13 @@ async function getSuggestedUsers(req, res) {
         ...suggestedUsers.map((user) => user._id),
       ];
 
-      console.log("Current user:", req.user._id);
-      console.log("Existing IDs:", existingIds);
-
       const allUsers = await User.find({}).select("_id name");
-
-      console.log("All users:", allUsers);
 
       const fallbackUsers = await User.find({
         _id: { $nin: existingIds },
       })
         .select("name profilePic bio")
         .limit(5 - suggestedUsers.length);
-
-      console.log("Fallback users:", fallbackUsers);
 
       suggestedUsers = [...suggestedUsers, ...fallbackUsers];
     }
@@ -621,7 +612,7 @@ async function getSuggestedUsers(req, res) {
       suggestedUsers,
     });
   } catch (error) {
-    console.log(error);
+    logger.error("user.suggestions.failed", error);
 
     return res.status(500).json({
       message: "Server Error",

@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const RevokedToken = require("../models/RevokedToken");
 const { hashToken } = require("../utils/tokenUtils");
+const logger = require("../utils/logger");
 
 async function authenticateRequest(req, res, next, allowRevoked = false) {
   try {
@@ -44,7 +45,7 @@ async function authenticateRequest(req, res, next, allowRevoked = false) {
 
     next();
   } catch (error) {
-    console.log(error);
+    logger.error("auth.middleware.failed", error);
 
     res.status(401).json({
       message: "Unauthorized",

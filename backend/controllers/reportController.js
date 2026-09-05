@@ -1,5 +1,6 @@
 const Report = require("../models/Report");
 const Post = require("../models/Post");
+const logger = require("../utils/logger");
 
 async function reportPost(req, res) {
   try {
@@ -39,7 +40,7 @@ async function reportPost(req, res) {
       message: "Post reported successfully",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("report.create.failed", error);
 
     res.status(500).json({
       message: "Server Error",

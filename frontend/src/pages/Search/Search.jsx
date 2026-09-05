@@ -47,7 +47,7 @@ function Search() {
         setUsers(response.data.usersWithFollowStatus);
       } catch (error) {
         if (error.code === "ERR_CANCELED") return;
-        console.log(error);
+        logger.error("user.search.failed", error);
         setError("Failed to search users");
       } finally {
         setLoading(false);
@@ -71,7 +71,7 @@ function Search() {
       await fetchUser();
       await fetchSuggestedUsers();
     } catch (error) {
-      console.log(error);
+      logger.error("user.follow.failed", error);
     } finally {
       setFollowingId(null);
     }
@@ -91,7 +91,7 @@ function Search() {
       await fetchUser();
       await fetchSuggestedUsers();
     } catch (error) {
-      console.log(error);
+      logger.error("user.unfollow.failed", error);
     } finally {
       setFollowingId(null);
     }
@@ -403,3 +403,4 @@ function Search() {
 }
 
 export default Search;
+import logger from "../../utils/logger";

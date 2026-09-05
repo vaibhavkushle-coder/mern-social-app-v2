@@ -46,7 +46,7 @@ function FollowButton({ profileUser }) {
         showToast("User followed successfully", "success");
       }
     } catch (error) {
-      console.log(error);
+      logger.error("user.follow_toggle.failed", error);
 
       showToast(
         error.response?.data?.message || "Something went wrong",
@@ -111,3 +111,4 @@ function FollowButton({ profileUser }) {
   );
 }
 export default FollowButton;
+import logger from "../../utils/logger";

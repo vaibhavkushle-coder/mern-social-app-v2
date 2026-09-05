@@ -42,7 +42,7 @@ function CreatePost() {
 
       navigate("/");
     } catch (error) {
-      console.log(error);
+      logger.error("post.create.failed", error);
       showToast("Failed to create post 📷", "error");
     } finally {
       setCreatingPost(false);
@@ -329,3 +329,4 @@ function CreatePost() {
 }
 
 export default CreatePost;
+import logger from "../../utils/logger";

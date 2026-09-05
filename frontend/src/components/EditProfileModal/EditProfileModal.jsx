@@ -33,7 +33,7 @@ function EditProfileModal({ user, onClose }) {
 
       showToast("Profile updated successfully 🎉", "success");
     } catch (error) {
-      console.log(error);
+      logger.error("user.edit_profile.failed", error);
 
       showToast("Failed to update profile 🎉", "error");
     } finally {
@@ -215,3 +215,4 @@ function EditProfileModal({ user, onClose }) {
 }
 
 export default EditProfileModal;
+import logger from "../../utils/logger";

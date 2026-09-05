@@ -24,6 +24,7 @@ import { useNavigate } from "react-router-dom";
 import { useSocket } from "../../hooks/useSocket";
 import { useToast } from "../../hooks/useToast";
 import { useConversation } from "../../hooks/useConversation";
+import logger from "../../utils/logger";
 
 const EmojiPicker = lazy(() => import("emoji-picker-react"));
 
@@ -226,7 +227,7 @@ function Chat() {
         return true;
       } catch (error) {
         if (isCurrentVersion()) {
-          console.log(error);
+          logger.error("chat.initial_messages.failed", error);
         }
 
         return isCurrentVersion();
@@ -246,7 +247,7 @@ function Chat() {
         setChatUser(response.data.user);
       } catch (error) {
         if (isCurrentVersion()) {
-          console.log(error);
+          logger.error("chat.user_fetch.failed", error);
         }
       }
     }
@@ -448,7 +449,7 @@ function Chat() {
         inputRef.current?.focus();
         showToast("Edited successfully", "success");
       } catch (error) {
-        console.log(error);
+        logger.error("chat.message_edit.failed", error);
         showToast("Failed to edit message", "error");
       } finally {
         setSending(false);
@@ -554,7 +555,7 @@ function Chat() {
       );
       updateConversation(newMessage);
     } catch (error) {
-      console.log(error);
+      logger.error("chat.message_send.failed", error);
       setMessages((prev) =>
         prev.map((message) =>
           message._id === temporaryMessageId
@@ -650,7 +651,7 @@ function Chat() {
       setSelectMode(false);
       setSelectedMessageIds([]);
     } catch (error) {
-      console.log(error);
+      logger.error("chat.delete_for_me.failed", error);
       showToast("Failed to delete messages", "error");
     }
     setDeleting(false);
@@ -694,7 +695,7 @@ function Chat() {
       setSelectMode(false);
       setSelectedMessageIds([]);
     } catch (error) {
-      console.log(error);
+      logger.error("chat.delete_for_everyone.failed", error);
       showToast("Failed to delete messages", "error");
     } finally {
       setDeleting(false);
@@ -993,7 +994,7 @@ z-50 overflow-hidden"
           ref={messagesContainerRef}
           onScroll={(event) => {
             if (event.currentTarget.scrollTop < 80)
-              loadOlderMessages().catch(console.log);
+              loadOlderMessages().catch((error) => logger.error("chat.older_messages.failed", error));
           }}
           className={`flex-1 overflow-y-auto px-5 py-5
          space-y-2 scroll-smooth  scrollbar-thin

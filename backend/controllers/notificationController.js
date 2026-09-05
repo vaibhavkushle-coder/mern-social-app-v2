@@ -10,6 +10,7 @@ const {
   isValidObjectId,
   parsePaginationLimit,
 } = require("../utils/validation");
+const logger = require("../utils/logger");
 
 async function getNotifications(req, res) {
   try {
@@ -68,7 +69,7 @@ async function getNotifications(req, res) {
       return res.status(400).json({ message: error.message });
     }
 
-    console.log(error);
+    logger.error("notification.list.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -92,7 +93,7 @@ async function markAllAsRead(req, res) {
       message: "All notifications marked as read",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("notification.read_all.failed", error);
 
     res.status(500).json({
       message: "Server Error",
@@ -126,7 +127,7 @@ async function deleteSelectedNotifications(req, res) {
       message: "Notification deleted successfully",
     });
   } catch (error) {
-    console.log(error);
+    logger.error("notification.delete_selected.failed", error);
 
     res.status(500).json({
       message: "Server Error",

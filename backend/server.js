@@ -16,6 +16,7 @@ const Message = require("./models/Message");
 const RevokedToken = require("./models/RevokedToken");
 const { isValidObjectId } = require("./utils/validation");
 const { hashToken, getTokenSocketRoom } = require("./utils/tokenUtils");
+const logger = require("./utils/logger");
 
 const dotenv = require("dotenv");
 dotenv.config();
@@ -90,8 +91,6 @@ io.use(async (socket, next) => {
 });
 
 io.on("connection", async (socket) => {
-  console.log("✅ User Connected:", socket.id);
-
   socket.join(getTokenSocketRoom(socket.tokenHash));
 
   let isRevoked;
@@ -114,8 +113,6 @@ io.on("connection", async (socket) => {
     socket.broadcast.emit("user-online", socket.userId);
   }
   socket.emit("online-users", getOnlineUserIds());
-
-  console.log("Online Users:", getOnlineUserIds());
 
   socket.on("join-profile", (profileUserId) => {
     if (!isValidObjectId(profileUserId)) return;
@@ -187,7 +184,7 @@ io.on("connection", async (socket) => {
         });
       }
     } catch (error) {
-      console.log(error);
+      logger.error("socket.message_seen.failed", error);
     }
   });
 
@@ -219,13 +216,11 @@ io.on("connection", async (socket) => {
         });
       }
     } catch (error) {
-      console.log(error);
+      logger.error("socket.message_delivered.failed", error);
     }
   });
 
   socket.on("disconnect", async () => {
-    console.log("DISCONNECTED uSER:", socket.userId);
-
     if (socket.userId) {
       const becameOffline = removeUserSocket(socket.userId, socket.id);
 
@@ -240,8 +235,6 @@ io.on("connection", async (socket) => {
       }
     }
 
-    console.log("❌ User Disconnected");
-    console.log("Online Users:", getOnlineUserIds());
   });
 });
 
@@ -271,11 +264,11 @@ async function startServer() {
   await Promise.all([Message.init(), RevokedToken.init()]);
 
   server.listen(PORT, () => {
-    console.log(`Server running on ${PORT}`);
+    logger.info("server.listening", { port: Number(PORT) || PORT });
   });
 }
 
 startServer().catch((error) => {
-  console.error("Server startup failed:", error);
+  logger.error("server.startup.failed", error);
   process.exit(1);
 });
