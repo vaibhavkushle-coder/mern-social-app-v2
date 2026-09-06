@@ -2,8 +2,9 @@ const Message = require("../models/Message");
 const { getIO, getUserSocketIds } = require("../socket");
 const Conversation = require("../models/Conversation");
 const User = require("../models/User");
-const Post = require("../models/Post");
+const mongoose = require("mongoose");
 const { getCanonicalConversationPair } = require("../utils/conversationPair");
+const { lockPostForReference } = require("../utils/postReference");
 const {
   InvalidPaginationCursorError,
   buildPaginationFilter,
@@ -157,30 +158,55 @@ async function sendMessage(req, res) {
       }
     }
 
-    if (post) {
-      const sharedPost = await Post.findById(post);
-
-      if (!sharedPost) {
-        return res.status(404).json({
-          message: "Post not found",
-        });
-      }
-    }
-
     let message;
     let messageCreated = false;
+    const messageData = {
+      sender: senderId,
+      receiver: receiverId,
+      conversation: conversation._id,
+      clientMessageId: normalizedClientMessageId,
+      text: normalizedText,
+      replyTo: replyTo || null,
+      post: post || null,
+    };
 
     try {
-      message = await Message.create({
-        sender: senderId,
-        receiver: receiverId,
-        conversation: conversation._id,
-        clientMessageId: normalizedClientMessageId,
-        text: normalizedText,
-        replyTo: replyTo || null,
-        post: post || null,
-      });
-      messageCreated = true;
+      if (post) {
+        const session = await mongoose.startSession();
+        let postMissing = false;
+
+        try {
+          await session.withTransaction(async () => {
+            message = undefined;
+            messageCreated = false;
+            postMissing = false;
+
+            const sharedPost = await lockPostForReference(post, session);
+
+            if (!sharedPost) {
+              postMissing = true;
+              return;
+            }
+
+            const [createdMessage] = await Message.create([messageData], {
+              session,
+            });
+            message = createdMessage;
+            messageCreated = true;
+          });
+        } finally {
+          await session.endSession();
+        }
+
+        if (postMissing) {
+          return res.status(404).json({
+            message: "Post not found",
+          });
+        }
+      } else {
+        message = await Message.create(messageData);
+        messageCreated = true;
+      }
     } catch (error) {
       if (error?.code !== 11000 || !normalizedClientMessageId) {
         throw error;

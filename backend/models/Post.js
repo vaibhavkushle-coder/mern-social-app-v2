@@ -18,6 +18,12 @@ const postSchema = new mongoose.Schema(
       required: true,
     },
 
+    referenceVersion: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,

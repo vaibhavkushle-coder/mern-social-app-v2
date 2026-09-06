@@ -1,6 +1,8 @@
 const Report = require("../models/Report");
 const Post = require("../models/Post");
+const mongoose = require("mongoose");
 const logger = require("../utils/logger");
+const { lockPostForReference } = require("../utils/postReference");
 
 async function reportPost(req, res) {
   try {
@@ -31,10 +33,39 @@ async function reportPost(req, res) {
       });
     }
 
-    await Report.create({
-      reporter: req.user._id,
-      post: postId,
-    });
+    const session = await mongoose.startSession();
+    let postMissing = false;
+
+    try {
+      await session.withTransaction(async () => {
+        postMissing = false;
+
+        const referencedPost = await lockPostForReference(postId, session);
+
+        if (!referencedPost) {
+          postMissing = true;
+          return;
+        }
+
+        await Report.create(
+          [
+            {
+              reporter: req.user._id,
+              post: postId,
+            },
+          ],
+          { session },
+        );
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    if (postMissing) {
+      return res.status(404).json({
+        message: "Post not found",
+      });
+    }
 
     res.status(200).json({
       message: "Post reported successfully",

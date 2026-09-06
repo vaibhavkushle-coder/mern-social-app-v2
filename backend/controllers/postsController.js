@@ -19,6 +19,7 @@ const {
   parsePaginationLimit,
 } = require("../utils/validation");
 const logger = require("../utils/logger");
+const { lockPostForReference } = require("../utils/postReference");
 
 async function createPost(req, res) {
   try {
@@ -347,22 +348,44 @@ async function commentPost(req, res) {
     await post.save();
 
     if (req.user._id.toString() !== post.user.toString()) {
-      const notification = await Notification.create({
-        fromUser: req.user._id,
-        toUser: post.user,
-        post: post._id,
-        type: "comment",
-      });
+      const session = await mongoose.startSession();
+      let notification;
 
-      const populateMessage = await Notification.findById(notification._id)
-        .populate("fromUser", "name profilePic")
-        .populate("post");
+      try {
+        await session.withTransaction(async () => {
+          notification = undefined;
 
-      const io = getIO();
-      const receiverSocketIds = getUserSocketIds(post.user.toString());
+          const referencedPost = await lockPostForReference(post._id, session);
 
-      if (receiverSocketIds.length > 0) {
-        io.to(receiverSocketIds).emit("new-notification", populateMessage);
+          if (!referencedPost) return;
+
+          [notification] = await Notification.create(
+            [
+              {
+                fromUser: req.user._id,
+                toUser: post.user,
+                post: post._id,
+                type: "comment",
+              },
+            ],
+            { session },
+          );
+        });
+      } finally {
+        await session.endSession();
+      }
+
+      if (notification) {
+        const populateMessage = await Notification.findById(notification._id)
+          .populate("fromUser", "name profilePic")
+          .populate("post");
+
+        const io = getIO();
+        const receiverSocketIds = getUserSocketIds(post.user.toString());
+
+        if (receiverSocketIds.length > 0) {
+          io.to(receiverSocketIds).emit("new-notification", populateMessage);
+        }
       }
     }
 
@@ -454,31 +477,53 @@ async function deleteComment(req, res) {
 
 async function deletePost(req, res) {
   try {
-    const post = await Post.findById(req.params.id);
+    const session = await mongoose.startSession();
+    let post;
+    let failure;
 
-    if (!post) {
-      return res.status(404).json({
-        message: "Post not found",
+    try {
+      await session.withTransaction(async () => {
+        post = undefined;
+        failure = undefined;
+
+        post = await Post.findOneAndDelete(
+          { _id: req.params.id, user: req.user._id },
+          { session },
+        );
+
+        if (!post) {
+          const postExists = await Post.exists({ _id: req.params.id }).session(
+            session,
+          );
+          failure = {
+            status: postExists ? 403 : 404,
+            message: postExists
+              ? "You can only delete your own post"
+              : "Post not found",
+          };
+          return;
+        }
+
+        await Message.updateMany(
+          { post: post._id },
+          { $set: { post: null } },
+          { session },
+        );
+        await Notification.deleteMany({ post: post._id }, { session });
+        await Report.deleteMany({ post: post._id }, { session });
+        await User.updateMany(
+          { savedPosts: post._id },
+          { $pull: { savedPosts: post._id } },
+          { session },
+        );
       });
+    } finally {
+      await session.endSession();
     }
 
-    if (post.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        message: "You can only delete your own post",
-      });
+    if (failure) {
+      return res.status(failure.status).json({ message: failure.message });
     }
-
-    await post.deleteOne();
-
-    await Promise.all([
-      Message.updateMany({ post: post._id }, { $set: { post: null } }),
-      Notification.deleteMany({ post: post._id }),
-      Report.deleteMany({ post: post._id }),
-      User.updateMany(
-        { savedPosts: post._id },
-        { $pull: { savedPosts: post._id } },
-      ),
-    ]);
 
     const io = getIO();
 

@@ -6,6 +6,7 @@ const { getIO, getUserSocketIds } = require("../socket");
 const mongoose = require("mongoose");
 const { INPUT_LIMITS, escapeRegex } = require("../utils/validation");
 const logger = require("../utils/logger");
+const { lockPostForReference } = require("../utils/postReference");
 
 async function followUser(req, res) {
   try {
@@ -477,14 +478,6 @@ async function savePost(req, res) {
 
     const postId = req.params.id;
 
-    const post = await Post.findById(postId);
-
-    if (!post) {
-      return res.status(404).json({
-        message: "Post not found",
-      });
-    }
-
     const alreadySaved = user.savedPosts.some((id) => id.toString() === postId);
 
     if (alreadySaved) {
@@ -493,9 +486,47 @@ async function savePost(req, res) {
       });
     }
 
-    user.savedPosts.push(postId);
+    const session = await mongoose.startSession();
+    let postMissing = false;
+    let alreadySavedDuringTransaction = false;
 
-    await user.save();
+    try {
+      await session.withTransaction(async () => {
+        postMissing = false;
+        alreadySavedDuringTransaction = false;
+
+        const post = await lockPostForReference(postId, session);
+
+        if (!post) {
+          postMissing = true;
+          return;
+        }
+
+        const userUpdate = await User.updateOne(
+          { _id: req.user._id, savedPosts: { $ne: postId } },
+          { $addToSet: { savedPosts: postId } },
+          { session },
+        );
+
+        if (userUpdate.modifiedCount === 0) {
+          alreadySavedDuringTransaction = true;
+        }
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    if (postMissing) {
+      return res.status(404).json({
+        message: "Post not found",
+      });
+    }
+
+    if (alreadySavedDuringTransaction) {
+      return res.status(400).json({
+        message: "Post already saved",
+      });
+    }
 
     res.status(200).json({
       message: "Post saved successfully",
