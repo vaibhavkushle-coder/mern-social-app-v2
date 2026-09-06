@@ -670,8 +670,6 @@ async function getSuggestedUsers(req, res) {
         ...suggestedUsers.map((user) => user._id),
       ];
 
-      const allUsers = await User.find({}).select("_id name");
-
       const fallbackUsers = await User.find({
         _id: { $nin: existingIds },
       })
