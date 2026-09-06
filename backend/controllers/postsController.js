@@ -713,18 +713,22 @@ async function getMyPosts(req, res) {
 
     const limit = parsePaginationLimit(req.query.limit, 12, 30);
     const cursor = req.query.cursor;
-    const posts = await Post.find({
-      user: userId,
-      ...buildPaginationFilter("createdAt", cursor),
-    })
-      .populate("user", "name profilePic")
-      .sort({ createdAt: -1, _id: -1 })
-      .limit(limit + 1);
+    const [posts, totalPosts] = await Promise.all([
+      Post.find({
+        user: userId,
+        ...buildPaginationFilter("createdAt", cursor),
+      })
+        .populate("user", "name profilePic")
+        .sort({ createdAt: -1, _id: -1 })
+        .limit(limit + 1),
+      Post.countDocuments({ user: userId }),
+    ]);
     const hasMore = posts.length > limit;
     const page = hasMore ? posts.slice(0, limit) : posts;
 
     res.status(200).json({
       posts: page,
+      totalPosts,
       hasMore,
       nextCursor: hasMore
         ? encodePaginationCursor(page[page.length - 1], "createdAt")

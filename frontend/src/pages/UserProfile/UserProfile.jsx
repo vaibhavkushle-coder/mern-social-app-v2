@@ -16,6 +16,7 @@ function UserProfile() {
     hasMore: false,
     nextCursor: null,
     loadingMore: false,
+    totalPosts: 0,
   });
   const postsRequestRef = useRef(null);
   const requestVersionRef = useRef(0);
@@ -38,7 +39,12 @@ function UserProfile() {
     postsRequestRef.current = null;
     setUser(null);
     setPosts([]);
-    setPostMeta({ hasMore: false, nextCursor: null, loadingMore: false });
+    setPostMeta({
+      hasMore: false,
+      nextCursor: null,
+      loadingMore: false,
+      totalPosts: 0,
+    });
 
     async function fetchProfile() {
       try {
@@ -52,6 +58,7 @@ function UserProfile() {
           hasMore: response.data.hasMore,
           nextCursor: response.data.nextCursor,
           loadingMore: false,
+          totalPosts: response.data.totalPosts,
         });
       } catch (error) {
         if (requestVersionRef.current === version) {
@@ -99,6 +106,7 @@ function UserProfile() {
         hasMore: response.data.hasMore,
         nextCursor: response.data.nextCursor,
         loadingMore: false,
+        totalPosts: response.data.totalPosts,
       });
     } catch (error) {
       if (requestVersionRef.current === version) {
@@ -161,6 +169,7 @@ function UserProfile() {
         <ProfileContent
           user={user}
           posts={posts}
+          totalPosts={postMeta.totalPosts}
           isOwnProfile={isOwnProfile}
           setUser={setUser}
         >

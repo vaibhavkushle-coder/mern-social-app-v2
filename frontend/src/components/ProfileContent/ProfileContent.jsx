@@ -14,7 +14,14 @@ import { useToast } from "../../hooks/useToast";
 import { logout } from "../../services/authService";
 import logger from "../../utils/logger";
 
-function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
+function ProfileContent({
+  user,
+  posts,
+  totalPosts,
+  children,
+  isOwnProfile,
+  setUser,
+}) {
   const [isFollowersOpen, setIsFollowersOpen] = useState(false);
   const [isFollowingOpen, setIsFollowingOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -27,6 +34,9 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
   const followers = user?.followers || [];
   const following = user?.following || [];
   const userPosts = posts || [];
+  const postCount = Number.isInteger(totalPosts)
+    ? totalPosts
+    : userPosts.length;
 
   useEffect(() => {
     if (!socket || !user?._id) return;
@@ -508,7 +518,7 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
             transition-all duration-200 active:scale-95"
           >
             <h2 className="text-xl font-bold text-white leading-none">
-              {userPosts.length}
+              {postCount}
             </h2>
 
             <p className="text-sm text-purple-200 font-semibold mt-2 tracking-wide">
@@ -663,7 +673,7 @@ function ProfileContent({ user, posts, children, isOwnProfile, setUser }) {
           </div>
 
           <p className="text-[11px] sm:text-xs text-gray-400">
-            {userPosts.length} {userPosts.length === 1 ? "Post" : "Posts"}
+            {postCount} {postCount === 1 ? "Post" : "Posts"}
           </p>
         </div>
 

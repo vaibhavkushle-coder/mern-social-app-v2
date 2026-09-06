@@ -114,98 +114,107 @@ async function sendMessage(req, res) {
     }
 
     const pair = getCanonicalConversationPair(senderId, receiverId);
-    const conversation = await Conversation.findOneAndUpdate(
-      {
-        participantA: pair.participantA,
-        participantB: pair.participantB,
-      },
-      {
-        $setOnInsert: {
-          participants: pair.participants,
-          participantA: pair.participantA,
-          participantB: pair.participantB,
-        },
-        $set: { updatedAt: new Date() },
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
-    );
-
-    if (replyTo) {
-      const replyMessage = await Message.findById(replyTo);
-
-      if (!replyMessage) {
-        return res.status(404).json({
-          message: "Reply message not found",
-        });
-      }
-
-      if (
-        replyMessage.conversation.toString() !== conversation._id.toString()
-      ) {
-        return res.status(403).json({
-          message: "Invalid reply message",
-        });
-      }
-
-      const replyDeletedForSender = replyMessage.deleteFor.some(
-        (item) => item.user.toString() === senderId.toString(),
-      );
-
-      if (replyMessage.isDeletedForEveryone || replyDeletedForSender) {
-        return res.status(400).json({
-          message: "Cannot reply to a deleted message",
-        });
-      }
-    }
-
     let message;
     let messageCreated = false;
-    const messageData = {
-      sender: senderId,
-      receiver: receiverId,
-      conversation: conversation._id,
-      clientMessageId: normalizedClientMessageId,
-      text: normalizedText,
-      replyTo: replyTo || null,
-      post: post || null,
-    };
+    let failure;
 
     try {
-      if (post) {
-        const session = await mongoose.startSession();
-        let postMissing = false;
+      const session = await mongoose.startSession();
 
-        try {
-          await session.withTransaction(async () => {
-            message = undefined;
-            messageCreated = false;
-            postMissing = false;
+      try {
+        await session.withTransaction(async () => {
+          message = undefined;
+          messageCreated = false;
+          failure = undefined;
 
-            const sharedPost = await lockPostForReference(post, session);
+          if (replyTo) {
+            const replyMessage = await Message.findById(replyTo).session(
+              session,
+            );
 
-            if (!sharedPost) {
-              postMissing = true;
+            if (!replyMessage) {
+              failure = { status: 404, message: "Reply message not found" };
               return;
             }
 
-            const [createdMessage] = await Message.create([messageData], {
-              session,
-            });
-            message = createdMessage;
-            messageCreated = true;
-          });
-        } finally {
-          await session.endSession();
-        }
+            const replyConversation = await Conversation.findOne({
+              participantA: pair.participantA,
+              participantB: pair.participantB,
+            })
+              .session(session)
+              .select("_id");
 
-        if (postMissing) {
-          return res.status(404).json({
-            message: "Post not found",
-          });
-        }
-      } else {
-        message = await Message.create(messageData);
-        messageCreated = true;
+            if (
+              !replyConversation ||
+              replyMessage.conversation.toString() !==
+                replyConversation._id.toString()
+            ) {
+              failure = { status: 403, message: "Invalid reply message" };
+              return;
+            }
+
+            const replyDeletedForSender = replyMessage.deleteFor.some(
+              (item) => item.user.toString() === senderId.toString(),
+            );
+
+            if (replyMessage.isDeletedForEveryone || replyDeletedForSender) {
+              failure = {
+                status: 400,
+                message: "Cannot reply to a deleted message",
+              };
+              return;
+            }
+          }
+
+          if (post) {
+            const sharedPost = await lockPostForReference(post, session);
+
+            if (!sharedPost) {
+              failure = { status: 404, message: "Post not found" };
+              return;
+            }
+          }
+
+          const conversation = await Conversation.findOneAndUpdate(
+            {
+              participantA: pair.participantA,
+              participantB: pair.participantB,
+            },
+            {
+              $setOnInsert: {
+                participants: pair.participants,
+                participantA: pair.participantA,
+                participantB: pair.participantB,
+              },
+              $set: { updatedAt: new Date() },
+            },
+            {
+              upsert: true,
+              new: true,
+              setDefaultsOnInsert: true,
+              session,
+            },
+          );
+
+          const [createdMessage] = await Message.create(
+            [
+              {
+                sender: senderId,
+                receiver: receiverId,
+                conversation: conversation._id,
+                clientMessageId: normalizedClientMessageId,
+                text: normalizedText,
+                replyTo: replyTo || null,
+                post: post || null,
+              },
+            ],
+            { session },
+          );
+          message = createdMessage;
+          messageCreated = true;
+        });
+      } finally {
+        await session.endSession();
       }
     } catch (error) {
       if (error?.code !== 11000 || !normalizedClientMessageId) {
@@ -224,6 +233,10 @@ async function sendMessage(req, res) {
           message: "Client message ID is already in use",
         });
       }
+    }
+
+    if (failure) {
+      return res.status(failure.status).json({ message: failure.message });
     }
 
     const populatedMessage = await populateMessage(message._id);

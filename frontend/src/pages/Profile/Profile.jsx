@@ -12,6 +12,7 @@ function Profile() {
     hasMore: false,
     nextCursor: null,
     loadingMore: false,
+    totalPosts: 0,
   });
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const { user, setUser, fetchUser } = useUser();
@@ -23,7 +24,12 @@ function Profile() {
     const version = ++requestVersionRef.current;
     postsRequestRef.current = null;
     setPosts([]);
-    setPostMeta({ hasMore: false, nextCursor: null, loadingMore: false });
+    setPostMeta({
+      hasMore: false,
+      nextCursor: null,
+      loadingMore: false,
+      totalPosts: 0,
+    });
 
     if (!currentUserId) return;
 
@@ -38,6 +44,7 @@ function Profile() {
           hasMore: response.data.hasMore,
           nextCursor: response.data.nextCursor,
           loadingMore: false,
+          totalPosts: response.data.totalPosts,
         });
       } catch (error) {
         if (requestVersionRef.current === version) {
@@ -93,6 +100,7 @@ function Profile() {
         hasMore: response.data.hasMore,
         nextCursor: response.data.nextCursor,
         loadingMore: false,
+        totalPosts: response.data.totalPosts,
       });
     } catch (error) {
       if (requestVersionRef.current === version) {
@@ -134,6 +142,7 @@ function Profile() {
         <ProfileContent
           user={user}
           posts={posts}
+          totalPosts={postMeta.totalPosts}
           isOwnProfile={true}
           setUser={setUser}
         >

@@ -427,12 +427,15 @@ async function getProfileById(req, res) {
 
     const limit = parsePaginationLimit(req.query.limit, 12, 30);
     const cursor = req.query.cursor;
-    const posts = await Post.find({
-      user: req.params.id,
-      ...buildPaginationFilter("createdAt", cursor),
-    })
-      .sort({ createdAt: -1, _id: -1 })
-      .limit(limit + 1);
+    const [posts, totalPosts] = await Promise.all([
+      Post.find({
+        user: req.params.id,
+        ...buildPaginationFilter("createdAt", cursor),
+      })
+        .sort({ createdAt: -1, _id: -1 })
+        .limit(limit + 1),
+      Post.countDocuments({ user: req.params.id }),
+    ]);
     const hasMore = posts.length > limit;
     const page = hasMore ? posts.slice(0, limit) : posts;
 
@@ -440,6 +443,7 @@ async function getProfileById(req, res) {
       message: "Profile fetched successfully",
       user,
       posts: page,
+      totalPosts,
       hasMore,
       nextCursor: hasMore
         ? encodePaginationCursor(page[page.length - 1], "createdAt")

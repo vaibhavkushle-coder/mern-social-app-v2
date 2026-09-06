@@ -190,30 +190,45 @@ io.on("connection", async (socket) => {
 
   socket.on("message-delivered", async (payload) => {
     try {
-      const messageId = payload?.messageId;
+      const requestedIds = Array.isArray(payload?.messageIds)
+        ? payload.messageIds
+        : [payload?.messageId];
 
-      if (!isValidObjectId(messageId)) return;
+      if (requestedIds.length === 0 || requestedIds.length > 100) return;
 
-      const message = await Message.findById(messageId).select(
-        "sender receiver delivered clientMessageId",
+      const messageIds = [...new Set(requestedIds)].filter(isValidObjectId);
+
+      if (messageIds.length === 0) return;
+
+      const messages = await Message.find({
+        _id: { $in: messageIds },
+        receiver: socket.userId,
+        delivered: false,
+      }).select("sender receiver clientMessageId");
+
+      if (messages.length === 0) return;
+
+      const deliveredIds = messages.map((message) => message._id);
+      const result = await Message.updateMany(
+        {
+          _id: { $in: deliveredIds },
+          receiver: socket.userId,
+          delivered: false,
+        },
+        { $set: { delivered: true } },
       );
 
-      if (!message || message.receiver.toString() !== socket.userId) {
-        return;
-      }
+      if (result.modifiedCount === 0) return;
 
-      if (!message.delivered) {
-        message.delivered = true;
-        await message.save();
-      }
+      for (const message of messages) {
+        const senderSocketIds = getUserSocketIds(message.sender.toString());
 
-      const senderSocketIds = getUserSocketIds(message.sender.toString());
-
-      if (senderSocketIds.length > 0) {
-        io.to(senderSocketIds).emit("message-delivered", {
-          messageId: message._id,
-          clientMessageId: message.clientMessageId,
-        });
+        if (senderSocketIds.length > 0) {
+          io.to(senderSocketIds).emit("message-delivered", {
+            messageId: message._id,
+            clientMessageId: message.clientMessageId,
+          });
+        }
       }
     } catch (error) {
       logger.error("socket.message_delivered.failed", error);

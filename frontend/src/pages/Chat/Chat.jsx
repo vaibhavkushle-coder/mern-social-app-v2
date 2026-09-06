@@ -224,7 +224,7 @@ function Chat() {
           nextCursor: response.data.nextCursor,
         });
 
-        return true;
+        return response.data.messages;
       } catch (error) {
         if (isCurrentVersion()) {
           logger.error("chat.initial_messages.failed", error);
@@ -253,9 +253,23 @@ function Chat() {
     }
 
     async function handleChatOpen() {
-      const isActiveRequest = await fetchInitialMessages();
+      const initialMessages = await fetchInitialMessages();
 
-      if (!isActiveRequest || !isCurrentVersion()) return;
+      if (!initialMessages || !isCurrentVersion()) return;
+
+      const deliveredMessageIds = initialMessages
+        .filter(
+          (message) =>
+            !message.delivered &&
+            message.receiver?._id?.toString() === currentUserId,
+        )
+        .map((message) => message._id);
+
+      if (deliveredMessageIds?.length && isCurrentVersion()) {
+        socket.emit("message-delivered", {
+          messageIds: deliveredMessageIds,
+        });
+      }
 
       await markMessageAsSeen(id);
 
