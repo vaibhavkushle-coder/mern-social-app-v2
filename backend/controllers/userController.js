@@ -597,19 +597,17 @@ async function savePost(req, res) {
 
 async function unsavePost(req, res) {
   try {
-    const user = await User.findById(req.user._id);
+    const postId = req.params.id;
+    const userUpdate = await User.updateOne(
+      { _id: req.user._id },
+      { $pull: { savedPosts: postId } },
+    );
 
-    if (!user) {
+    if (userUpdate.matchedCount === 0) {
       return res.status(404).json({
         message: "User not found",
       });
     }
-
-    const postId = req.params.id;
-
-    user.savedPosts = user.savedPosts.filter((id) => id.toString() !== postId);
-
-    await user.save();
 
     res.status(200).json({
       message: "Post unsaved successfully",
