@@ -366,50 +366,101 @@ async function getConversations(req, res) {
     const currentUserId = req.user._id;
     const limit = parsePaginationLimit(req.query.limit, 20, 50);
     const cursor = req.query.cursor;
-    const userConversations = await Conversation.find({
-      participants: currentUserId,
-      ...buildPaginationFilter("updatedAt", cursor),
-    })
-      .sort({ updatedAt: -1, _id: -1 })
-      .limit(limit + 1)
-      .populate("participants", "name profilePic lastSeen");
-    const hasMore = userConversations.length > limit;
-    const page = hasMore ? userConversations.slice(0, limit) : userConversations;
+    const visibleEntries = [];
+    const targetCount = limit + 1;
+    const scanBatchSize = Math.max(targetCount, 20);
+    let scanCursor = cursor;
+    let exhausted = false;
 
-    const conversations = (await Promise.all(page.map(async (conversation) => {
-      const deletedRecord = conversation.deletedFor?.find(
-        (item) => item.user.toString() === currentUserId.toString(),
+    while (visibleEntries.length < targetCount && !exhausted) {
+      const records = await Conversation.find({
+        participants: currentUserId,
+        ...buildPaginationFilter("updatedAt", scanCursor),
+      })
+        .sort({ updatedAt: -1, _id: -1 })
+        .limit(scanBatchSize + 1)
+        .populate("participants", "name profilePic lastSeen");
+      const hasMoreRecords = records.length > scanBatchSize;
+      const batch = hasMoreRecords
+        ? records.slice(0, scanBatchSize)
+        : records;
+
+      const summaries = await Promise.all(
+        batch.map(async (conversation) => {
+          const deletedRecord = conversation.deletedFor?.find(
+            (item) => item.user.toString() === currentUserId.toString(),
+          );
+          const visible = {
+            conversation: conversation._id,
+            isDeletedForEveryone: false,
+            deleteFor: { $not: { $elemMatch: { user: currentUserId } } },
+            ...(deletedRecord
+              ? { createdAt: { $gt: deletedRecord.deletedAt } }
+              : {}),
+          };
+          const [lastMessage, unreadCount] = await Promise.all([
+            Message.findOne(visible).sort({ createdAt: -1 }),
+            Message.countDocuments({
+              ...visible,
+              receiver: currentUserId,
+              seen: false,
+            }),
+          ]);
+
+          if (!lastMessage) return null;
+
+          const otherUser = conversation.participants.find(
+            (participant) =>
+              participant._id.toString() !== currentUserId.toString(),
+          );
+
+          if (!otherUser) return null;
+
+          return {
+            document: conversation,
+            summary: {
+              conversationId: conversation._id,
+              user: otherUser,
+              lastMessage: lastMessage.text,
+              lastMessageTime: lastMessage.createdAt,
+              lastMessageId: lastMessage._id,
+              unreadCount,
+            },
+          };
+        }),
       );
-      const visible = {
-        conversation: conversation._id,
-        isDeletedForEveryone: false,
-        deleteFor: { $not: { $elemMatch: { user: currentUserId } } },
-        ...(deletedRecord ? { createdAt: { $gt: deletedRecord.deletedAt } } : {}),
-      };
-      const [lastMessage, unreadCount] = await Promise.all([
-        Message.findOne(visible).sort({ createdAt: -1 }),
-        Message.countDocuments({ ...visible, receiver: currentUserId, seen: false }),
-      ]);
-      if (!lastMessage) return null;
-      const otherUser = conversation.participants.find(
-        (participant) => participant._id.toString() !== currentUserId.toString(),
-      );
-      if (!otherUser) return null;
-      return {
-        conversationId: conversation._id,
-        user: otherUser,
-        lastMessage: lastMessage.text,
-        lastMessageTime: lastMessage.createdAt,
-        lastMessageId: lastMessage._id,
-        unreadCount,
-      };
-    }))).filter(Boolean);
+
+      for (const entry of summaries) {
+        if (entry) visibleEntries.push(entry);
+        if (visibleEntries.length === targetCount) break;
+      }
+
+      if (visibleEntries.length === targetCount) break;
+
+      if (!hasMoreRecords || batch.length === 0) {
+        exhausted = true;
+      } else {
+        scanCursor = encodePaginationCursor(
+          batch[batch.length - 1],
+          "updatedAt",
+        );
+      }
+    }
+
+    const hasMore = visibleEntries.length > limit;
+    const page = hasMore
+      ? visibleEntries.slice(0, limit)
+      : visibleEntries;
+    const conversations = page.map((entry) => entry.summary);
 
     res.status(200).json({
       conversations,
       hasMore,
       nextCursor: hasMore
-        ? encodePaginationCursor(page[page.length - 1], "updatedAt")
+        ? encodePaginationCursor(
+            page[page.length - 1].document,
+            "updatedAt",
+          )
         : null,
     });
   } catch (error) {
