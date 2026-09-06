@@ -11,6 +11,9 @@ function UserProfile() {
   const { id } = useParams();
 
   const [user, setUser] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [profileError, setProfileError] = useState(null);
+  const [retryVersion, setRetryVersion] = useState(0);
   const [posts, setPosts] = useState([]);
   const [postMeta, setPostMeta] = useState({
     hasMore: false,
@@ -38,6 +41,8 @@ function UserProfile() {
     const version = ++requestVersionRef.current;
     postsRequestRef.current = null;
     setUser(null);
+    setLoadingProfile(true);
+    setProfileError(null);
     setPosts([]);
     setPostMeta({
       hasMore: false,
@@ -63,6 +68,15 @@ function UserProfile() {
       } catch (error) {
         if (requestVersionRef.current === version) {
           logger.error("user.profile.failed", error);
+          setProfileError(
+            error.response?.status === 404
+              ? "User not found."
+              : "Unable to load profile. Please try again.",
+          );
+        }
+      } finally {
+        if (requestVersionRef.current === version) {
+          setLoadingProfile(false);
         }
       }
     }
@@ -73,7 +87,7 @@ function UserProfile() {
         requestVersionRef.current += 1;
       }
     };
-  }, [id, currentUserId]);
+  }, [id, currentUserId, retryVersion]);
 
   async function loadMorePosts() {
     if (
@@ -130,7 +144,7 @@ function UserProfile() {
     }
   }
 
-  if (!user) {
+  if (loadingProfile) {
     return (
       <>
         <div
@@ -151,6 +165,28 @@ function UserProfile() {
           </div>
         </div>
       </>
+    );
+  }
+
+  if (profileError || !user) {
+    return (
+      <div className="h-screen bg-[#0b0b1f] overflow-y-auto bg-black">
+        <Navbar />
+
+        <div className="flex flex-col items-center justify-center mt-50 gap-4 px-6 text-center">
+          <p className="text-sm font-medium text-gray-300">
+            {profileError || "Unable to load profile."}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setRetryVersion((version) => version + 1)}
+            className="rounded-lg border border-purple-500/60 px-5 py-2 text-sm font-semibold text-purple-200 transition hover:bg-purple-500/10"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
     );
   }
 
