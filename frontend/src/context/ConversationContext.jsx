@@ -4,21 +4,39 @@ import { useUser } from "../hooks/useUser";
 import { useSocket } from "../hooks/useSocket";
 
 export const ConversationContext = createContext();
+const INITIAL_CONVERSATION_META = {
+  hasMore: true,
+  nextCursor: null,
+  loadingMore: false,
+};
 
 export function ConversationProvider({ children }) {
   const [conversations, setConversations] = useState([]);
   const [conversationsLoaded, setConversationsLoaded] = useState(false);
+  const [conversationMeta, setConversationMeta] = useState(
+    INITIAL_CONVERSATION_META,
+  );
   const [messageCache, setMessageCache] = useState({});
   const conversationsRequestRef = useRef(null);
   const currentUserIdRef = useRef(null);
+  const conversationMetaRef = useRef(INITIAL_CONVERSATION_META);
+  const requestVersionRef = useRef(0);
   const { user } = useUser();
   const { socket } = useSocket();
   const currentUserId = user?._id?.toString() || null;
 
-  currentUserIdRef.current = currentUserId;
+  if (currentUserIdRef.current !== currentUserId) {
+    currentUserIdRef.current = currentUserId;
+    conversationMetaRef.current = INITIAL_CONVERSATION_META;
+    conversationsRequestRef.current = null;
+    requestVersionRef.current += 1;
+  } else {
+    conversationMetaRef.current = conversationMeta;
+  }
 
   const fetchConversations = useCallback(async () => {
     const requestUserId = currentUserIdRef.current;
+    const requestVersion = requestVersionRef.current;
 
     if (!requestUserId) return;
 
@@ -28,11 +46,19 @@ export function ConversationProvider({ children }) {
 
     const request = getConversations()
       .then((response) => {
-        if (currentUserIdRef.current === requestUserId) {
+        if (
+          currentUserIdRef.current === requestUserId &&
+          requestVersionRef.current === requestVersion
+        ) {
           setConversations((prev) => {
             const map = new Map(response.data.conversations.map((item) => [item.user._id, item]));
             prev.forEach((item) => { if (!map.has(item.user._id)) map.set(item.user._id, item); });
             return [...map.values()].sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+          });
+          setConversationMeta({
+            hasMore: response.data.hasMore,
+            nextCursor: response.data.nextCursor,
+            loadingMore: false,
           });
           setConversationsLoaded(true);
         }
@@ -57,9 +83,83 @@ export function ConversationProvider({ children }) {
     return request;
   }, []);
 
+  const loadMoreConversations = useCallback(async () => {
+    const requestUserId = currentUserIdRef.current;
+    const requestVersion = requestVersionRef.current;
+    const { hasMore, nextCursor, loadingMore } = conversationMetaRef.current;
+
+    if (
+      !requestUserId ||
+      !hasMore ||
+      !nextCursor ||
+      loadingMore ||
+      conversationsRequestRef.current
+    ) {
+      return;
+    }
+
+    const loadingMeta = {
+      ...conversationMetaRef.current,
+      loadingMore: true,
+    };
+    conversationMetaRef.current = loadingMeta;
+    setConversationMeta(loadingMeta);
+
+    const request = getConversations(nextCursor)
+      .then((response) => {
+        if (
+          currentUserIdRef.current !== requestUserId ||
+          requestVersionRef.current !== requestVersion
+        ) {
+          return response;
+        }
+
+        setConversations((prev) => {
+          const map = new Map(
+            response.data.conversations.map((item) => [item.user._id, item]),
+          );
+          prev.forEach((item) => map.set(item.user._id, item));
+          return [...map.values()].sort(
+            (a, b) =>
+              new Date(b.lastMessageTime) - new Date(a.lastMessageTime),
+          );
+        });
+        setConversationMeta({
+          hasMore: response.data.hasMore,
+          nextCursor: response.data.nextCursor,
+          loadingMore: false,
+        });
+
+        return response;
+      })
+      .catch((error) => {
+        logger.error("conversation.load_more.failed", error);
+        throw error;
+      })
+      .finally(() => {
+        if (conversationsRequestRef.current?.promise === request) {
+          conversationsRequestRef.current = null;
+        }
+        if (
+          currentUserIdRef.current === requestUserId &&
+          requestVersionRef.current === requestVersion
+        ) {
+          setConversationMeta((meta) => ({ ...meta, loadingMore: false }));
+        }
+      });
+
+    conversationsRequestRef.current = {
+      userId: requestUserId,
+      promise: request,
+    };
+
+    return request;
+  }, []);
+
   useEffect(() => {
     setConversations([]);
     setConversationsLoaded(false);
+    setConversationMeta(INITIAL_CONVERSATION_META);
     setMessageCache({});
     conversationsRequestRef.current = null;
 
@@ -102,7 +202,9 @@ export function ConversationProvider({ children }) {
         conversations,
         setConversations,
         fetchConversations,
+        loadMoreConversations,
         conversationsLoaded,
+        conversationMeta,
         messageCache,
         setMessageCache,
       }}

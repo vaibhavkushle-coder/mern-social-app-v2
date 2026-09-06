@@ -20,8 +20,14 @@ function Messages() {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const { conversations, setConversations, fetchConversations, conversationsLoaded } =
-    useConversation();
+  const {
+    conversations,
+    setConversations,
+    fetchConversations,
+    loadMoreConversations,
+    conversationsLoaded,
+    conversationMeta,
+  } = useConversation();
   const { user } = useUser();
 
   useEffect(() => {
@@ -39,6 +45,18 @@ function Messages() {
 
   const longPressTimer = useRef(null);
   const longPressed = useRef(false);
+
+  function handleConversationsScroll(event) {
+    const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+
+    if (
+      scrollHeight - scrollTop - clientHeight <= 80 &&
+      conversationMeta.hasMore &&
+      !conversationMeta.loadingMore
+    ) {
+      loadMoreConversations().catch(() => {});
+    }
+  }
 
   function handleSelectCoversation(userId) {
     setSelectedIds((prev) =>
@@ -367,6 +385,7 @@ function Messages() {
           >
             <div
               className="h-full overflow-y-auto"
+              onScroll={handleConversationsScroll}
               style={{
                 scrollbarWidth: "thin",
                 scrollbarColor: "rgba(139, 92, 246, 0.5) transparent",
