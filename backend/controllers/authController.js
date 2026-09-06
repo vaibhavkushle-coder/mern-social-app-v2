@@ -110,7 +110,7 @@ async function login(req, res) {
 
     if (!user) {
       return res.status(400).json({
-        message: "User not found",
+        message: "Invalid credentials",
       });
     }
 
