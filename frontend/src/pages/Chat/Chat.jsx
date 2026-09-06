@@ -230,7 +230,7 @@ function Chat() {
           logger.error("chat.initial_messages.failed", error);
         }
 
-        return isCurrentVersion();
+        return false;
       } finally {
         if (isCurrentVersion()) {
           setLoadingMessage(false);
