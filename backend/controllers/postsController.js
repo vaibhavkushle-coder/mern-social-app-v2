@@ -457,11 +457,31 @@ async function deleteComment(req, res) {
       });
     }
 
-    post.comments = post.comments.filter(
-      (comment) => comment._id.toString() !== req.params.commentId,
+    const deleteResult = await Post.updateOne(
+      {
+        _id: post._id,
+        comments: {
+          $elemMatch: {
+            _id: comment._id,
+            user: req.user._id,
+          },
+        },
+      },
+      {
+        $pull: {
+          comments: {
+            _id: comment._id,
+            user: req.user._id,
+          },
+        },
+      },
     );
 
-    await post.save();
+    if (deleteResult.modifiedCount === 0) {
+      return res.status(404).json({
+        message: "Comment not found",
+      });
+    }
 
     res.status(200).json({
       message: "Comment deleted successfully",
