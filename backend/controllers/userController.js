@@ -1,4 +1,5 @@
 const uploadToCloudinary = require("../utils/cloudinaryUpload");
+const { deleteCloudinaryAsset } = uploadToCloudinary;
 const User = require("../models/User");
 const Post = require("../models/Post");
 const Notification = require("../models/Notification");
@@ -265,6 +266,9 @@ async function removeFollower(req, res) {
 }
 
 async function editProfile(req, res) {
+  let uploadedImageUrl;
+  let profileSaved = false;
+
   try {
     const user = await User.findById(req.user._id);
 
@@ -299,16 +303,27 @@ async function editProfile(req, res) {
       return res.status(400).json({ message: "Bio is too long" });
     }
 
-    if (req.file) {
-      const imageUrl = await uploadToCloudinary(req.file, "profilePics");
+    const previousProfilePic = user.profilePic;
 
-      user.profilePic = imageUrl;
+    if (req.file) {
+      uploadedImageUrl = await uploadToCloudinary(req.file, "profilePics");
+
+      user.profilePic = uploadedImageUrl;
     }
 
     if (name !== undefined) user.name = normalizedName;
     if (bio !== undefined) user.bio = normalizedBio;
 
     await user.save();
+    profileSaved = true;
+
+    if (uploadedImageUrl && previousProfilePic !== uploadedImageUrl) {
+      try {
+        await deleteCloudinaryAsset(previousProfilePic);
+      } catch (cleanupError) {
+        logger.error("user.edit_profile_asset_cleanup.failed", cleanupError);
+      }
+    }
 
     const updatedUser = await User.findById(user._id).select("-password");
 
@@ -317,6 +332,14 @@ async function editProfile(req, res) {
       user: updatedUser,
     });
   } catch (error) {
+    if (uploadedImageUrl && !profileSaved) {
+      try {
+        await deleteCloudinaryAsset(uploadedImageUrl);
+      } catch (cleanupError) {
+        logger.error("user.edit_profile_upload_cleanup.failed", cleanupError);
+      }
+    }
+
     logger.error("user.edit_profile.failed", error);
 
     res.status(500).json({
@@ -326,6 +349,9 @@ async function editProfile(req, res) {
 }
 
 async function uploadProfilePic(req, res) {
+  let uploadedImageUrl;
+  let profileSaved = false;
+
   try {
     const user = await User.findById(req.user._id);
 
@@ -341,12 +367,21 @@ async function uploadProfilePic(req, res) {
       });
     }
 
-    const imageUrl = await uploadToCloudinary(req.file, "profilePics");
+    const previousProfilePic = user.profilePic;
+    uploadedImageUrl = await uploadToCloudinary(req.file, "profilePics");
 
-    user.profilePic = imageUrl;
+    user.profilePic = uploadedImageUrl;
 
     await user.save();
+    profileSaved = true;
 
+    if (previousProfilePic !== uploadedImageUrl) {
+      try {
+        await deleteCloudinaryAsset(previousProfilePic);
+      } catch (cleanupError) {
+        logger.error("user.profile_picture_asset_cleanup.failed", cleanupError);
+      }
+    }
     const updatedUser = await User.findById(user._id).select("-password");
 
     res.status(200).json({
@@ -354,6 +389,17 @@ async function uploadProfilePic(req, res) {
       user: updatedUser,
     });
   } catch (error) {
+    if (uploadedImageUrl && !profileSaved) {
+      try {
+        await deleteCloudinaryAsset(uploadedImageUrl);
+      } catch (cleanupError) {
+        logger.error(
+          "user.profile_picture_upload_cleanup.failed",
+          cleanupError,
+        );
+      }
+    }
+
     logger.error("user.upload_profile_picture.failed", error);
 
     res.status(500).json({

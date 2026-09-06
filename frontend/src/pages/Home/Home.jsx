@@ -280,6 +280,17 @@ function Home() {
     }
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen  bg-[#0b0b1f]">
+        <Navbar />
+        <div className="flex justify-center items-center py-20">
+          <p className="text-xl font-semibold text-red-500">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!postsLoaded && !selectedPostId) {
     return (
       <div className="min-h-screen  bg-[#0b0b1f]">
@@ -288,17 +299,6 @@ function Home() {
           <p className="text-xl font-semibold text-gray-200">
             ⌛ Loading posts...
           </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen  bg-[#0b0b1f]">
-        <Navbar />
-        <div className="flex justify-center items-center py-20">
-          <p className="text-xl font-semibold text-red-500">{error}</p>
         </div>
       </div>
     );

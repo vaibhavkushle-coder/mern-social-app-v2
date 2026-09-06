@@ -1,4 +1,5 @@
 const uploadToCloudinary = require("../utils/cloudinaryUpload");
+const { deleteCloudinaryAsset } = uploadToCloudinary;
 const cloudinary = require("../config/cloudinary");
 const streamifier = require("streamifier");
 const Post = require("../models/Post");
@@ -21,6 +22,9 @@ const {
 const logger = require("../utils/logger");
 
 async function createPost(req, res) {
+  let uploadedImageUrl;
+  let postCreated = false;
+
   try {
     const { caption } = req.body || {};
 
@@ -40,13 +44,14 @@ async function createPost(req, res) {
       });
     }
 
-    const imageUrl = await uploadToCloudinary(req.file, "posts");
+    uploadedImageUrl = await uploadToCloudinary(req.file, "posts");
 
     const post = await Post.create({
       user: req.user._id,
       caption: normalizedCaption,
-      image: imageUrl,
+      image: uploadedImageUrl,
     });
+    postCreated = true;
 
     const updatedPost = await Post.findById(post._id).populate(
       "user",
@@ -58,6 +63,14 @@ async function createPost(req, res) {
       post: updatedPost,
     });
   } catch (error) {
+    if (uploadedImageUrl && !postCreated) {
+      try {
+        await deleteCloudinaryAsset(uploadedImageUrl);
+      } catch (cleanupError) {
+        logger.error("post.create_upload_cleanup.failed", cleanupError);
+      }
+    }
+
     logger.error("post.create.failed", error);
 
     res.status(500).json({
@@ -547,6 +560,12 @@ async function deletePost(req, res) {
 
     if (failure) {
       return res.status(failure.status).json({ message: failure.message });
+    }
+
+    try {
+      await deleteCloudinaryAsset(post.image);
+    } catch (cleanupError) {
+      logger.error("post.delete_asset_cleanup.failed", cleanupError);
     }
 
     const io = getIO();

@@ -1,4 +1,10 @@
-import { createContext, useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { getAllPosts } from "../services/postService";
 import { getSuggestedUsers } from "../services/userService";
 import { useUser } from "../hooks/useUser";
@@ -27,7 +33,7 @@ export function HomeProvider({ children }) {
   const { user } = useUser();
   const userId = user?._id?.toString() || null;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     versionRef.current += 1;
     setPosts([]);
     setSuggestedUsers([]);
