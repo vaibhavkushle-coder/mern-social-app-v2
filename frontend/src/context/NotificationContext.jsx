@@ -21,6 +21,7 @@ export function NotificationProvider({ children }) {
     INITIAL_NOTIFICATION_META,
   );
   const notificationsRequestRef = useRef(null);
+  const notificationLoadMoreRequestRef = useRef(null);
   const currentUserIdRef = useRef(null);
 
   const { socket } = useSocket();
@@ -118,14 +119,24 @@ export function NotificationProvider({ children }) {
     setNotifications([]);
     setNotificationMeta(INITIAL_NOTIFICATION_META);
     notificationsRequestRef.current = null;
+    notificationLoadMoreRequestRef.current = null;
   }, [currentUserId, fetchNotifications]);
 
   async function loadMoreNotifications() {
-    if (!notificationMeta.hasMore || !notificationMeta.nextCursor || notificationMeta.loadingMore) return;
+    if (
+      !notificationMeta.hasMore ||
+      !notificationMeta.nextCursor ||
+      notificationMeta.loadingMore ||
+      notificationLoadMoreRequestRef.current
+    ) {
+      return;
+    }
     const requestUserId = currentUserIdRef.current;
 
     if (!requestUserId) return;
 
+    const requestMarker = { userId: requestUserId };
+    notificationLoadMoreRequestRef.current = requestMarker;
     setNotificationMeta((meta) => ({ ...meta, loadingMore: true }));
     try {
       const response = await getNotifications(notificationMeta.nextCursor);
@@ -138,6 +149,9 @@ export function NotificationProvider({ children }) {
       });
       setNotificationMeta((meta) => ({ ...meta, hasMore: response.data.hasMore, nextCursor: response.data.nextCursor }));
     } finally {
+      if (notificationLoadMoreRequestRef.current === requestMarker) {
+        notificationLoadMoreRequestRef.current = null;
+      }
       if (currentUserIdRef.current === requestUserId) {
         setNotificationMeta((meta) => ({ ...meta, loadingMore: false }));
       }

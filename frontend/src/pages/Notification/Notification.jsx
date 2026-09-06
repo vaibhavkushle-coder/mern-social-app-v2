@@ -27,6 +27,8 @@ function Notification() {
     notifications,
     readAllNotifications,
     fetchNotifications,
+    loadMoreNotifications,
+    notificationMeta,
     deleteSelectedNotificationsFromState,
   } = useNotification();
 
@@ -47,6 +49,19 @@ function Notification() {
       readAllNotifications();
     }
   }, [notifications, readAllNotifications]);
+
+  function handleNotificationsScroll(event) {
+    const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+
+    if (
+      scrollHeight - scrollTop - clientHeight <= 80 &&
+      notificationMeta.hasMore &&
+      notificationMeta.nextCursor &&
+      !notificationMeta.loadingMore
+    ) {
+      loadMoreNotifications().catch(() => {});
+    }
+  }
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden">
@@ -255,6 +270,7 @@ function Notification() {
           ) : (
             <div
               className="px-7 pb-6 space-y-3 overflow-y-auto h-[calc(100vh-190px)]"
+              onScroll={handleNotificationsScroll}
               style={{
                 scrollbarWidth: "thin",
                 scrollbarColor: "rgba(139, 92, 246, 0.5) transparent",
