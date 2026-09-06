@@ -36,10 +36,12 @@ async function followUser(req, res) {
 
     const session = await mongoose.startSession();
     let followed = false;
+    let populateNotification;
 
     try {
       await session.withTransaction(async () => {
         followed = false;
+        populateNotification = undefined;
         const currentUserUpdate = await User.updateOne(
           {
             _id: req.user._id,
@@ -61,6 +63,21 @@ async function followUser(req, res) {
           throw new Error("User not found during follow");
         }
 
+        const [notification] = await Notification.create(
+          [
+            {
+              fromUser: req.user._id,
+              toUser: userToFollow._id,
+              type: "follow",
+            },
+          ],
+          { session },
+        );
+
+        populateNotification = await Notification.findById(notification._id)
+          .session(session)
+          .populate("fromUser", "name profilePic");
+
         followed = true;
       });
     } finally {
@@ -73,33 +90,25 @@ async function followUser(req, res) {
       });
     }
 
-    // Create notification
-    const notification = await Notification.create({
-      fromUser: req.user._id,
-      toUser: userToFollow._id,
-      type: "follow",
-    });
+    try {
+      const io = getIO();
+      const receiverSocketIds = getUserSocketIds(userToFollow._id.toString());
 
-    const populateNotification = await Notification.findById(
-      notification._id,
-    ).populate("fromUser", "name profilePic");
+      if (receiverSocketIds.length > 0) {
+        io.to(receiverSocketIds).emit("new-notification", populateNotification);
+      }
 
-    const io = getIO();
-
-    const receiverSocketIds = getUserSocketIds(userToFollow._id.toString());
-
-    if (receiverSocketIds.length > 0) {
-      io.to(receiverSocketIds).emit("new-notification", populateNotification);
+      io.to(`profile:${userToFollow._id}`).emit("user-followed", {
+        userId: userToFollow._id,
+        follower: {
+          _id: req.user._id,
+          name: req.user.name,
+          profilePic: req.user.profilePic,
+        },
+      });
+    } catch (socketError) {
+      logger.error("user.follow.realtime_failed", socketError);
     }
-
-    io.to(`profile:${userToFollow._id}`).emit("user-followed", {
-      userId: userToFollow._id,
-      follower: {
-        _id: req.user._id,
-        name: req.user.name,
-        profilePic: req.user.profilePic,
-      },
-    });
 
     res.status(200).json({
       message: "User followed successfully",

@@ -19,7 +19,6 @@ const {
   parsePaginationLimit,
 } = require("../utils/validation");
 const logger = require("../utils/logger");
-const { lockPostForReference } = require("../utils/postReference");
 
 async function createPost(req, res) {
   try {
@@ -332,34 +331,28 @@ async function commentPost(req, res) {
       return res.status(400).json({ message: "Comment is too long" });
     }
 
-    const post = await Post.findById(req.params.id);
+    const session = await mongoose.startSession();
+    let post;
+    let populateMessage;
 
-    if (!post) {
-      return res.status(404).json({
-        message: "Post not found",
-      });
-    }
+    try {
+      await session.withTransaction(async () => {
+        post = undefined;
+        populateMessage = undefined;
 
-    post.comments.push({
-      user: req.user._id,
-      text: normalizedText,
-    });
+        post = await Post.findById(req.params.id).session(session);
 
-    await post.save();
+        if (!post) return;
 
-    if (req.user._id.toString() !== post.user.toString()) {
-      const session = await mongoose.startSession();
-      let notification;
+        post.comments.push({
+          user: req.user._id,
+          text: normalizedText,
+        });
 
-      try {
-        await session.withTransaction(async () => {
-          notification = undefined;
+        await post.save({ session });
 
-          const referencedPost = await lockPostForReference(post._id, session);
-
-          if (!referencedPost) return;
-
-          [notification] = await Notification.create(
+        if (req.user._id.toString() !== post.user.toString()) {
+          const [notification] = await Notification.create(
             [
               {
                 fromUser: req.user._id,
@@ -370,22 +363,33 @@ async function commentPost(req, res) {
             ],
             { session },
           );
-        });
-      } finally {
-        await session.endSession();
-      }
 
-      if (notification) {
-        const populateMessage = await Notification.findById(notification._id)
-          .populate("fromUser", "name profilePic")
-          .populate("post");
+          populateMessage = await Notification.findById(notification._id)
+            .session(session)
+            .populate("fromUser", "name profilePic")
+            .populate("post");
+        }
+      });
+    } finally {
+      await session.endSession();
+    }
 
+    if (!post) {
+      return res.status(404).json({
+        message: "Post not found",
+      });
+    }
+
+    if (populateMessage) {
+      try {
         const io = getIO();
         const receiverSocketIds = getUserSocketIds(post.user.toString());
 
         if (receiverSocketIds.length > 0) {
           io.to(receiverSocketIds).emit("new-notification", populateMessage);
         }
+      } catch (socketError) {
+        logger.error("comment.create.realtime_failed", socketError);
       }
     }
 
