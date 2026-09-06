@@ -8,8 +8,10 @@ async function editProfile(formData) {
   return await api.put("/user/edit", formData);
 }
 
-async function getProfileById(userId) {
-  return await api.get(`/user/profile/${userId}`);
+async function getProfileById(userId, cursor) {
+  return await api.get(`/user/profile/${userId}`, {
+    params: { limit: 12, cursor },
+  });
 }
 
 async function followUser(userId) {

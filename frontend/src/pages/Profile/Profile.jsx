@@ -1,23 +1,58 @@
 import { useUser } from "../../hooks/useUser";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getMyPosts } from "../../services/postService";
 import EditProfileModal from "../../components/EditProfileModal/EditProfileModal";
 import Navbar from "../../components/Navbar/Navbar";
 import ProfileContent from "../../components/ProfileContent/ProfileContent";
+import logger from "../../utils/logger";
 
 function Profile() {
   const [posts, setPosts] = useState([]);
+  const [postMeta, setPostMeta] = useState({
+    hasMore: false,
+    nextCursor: null,
+    loadingMore: false,
+  });
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const { user, setUser, fetchUser } = useUser();
+  const postsRequestRef = useRef(null);
+  const requestVersionRef = useRef(0);
+  const currentUserId = user?._id?.toString() || null;
 
   useEffect(() => {
-    async function fetchPosts() {
-      const response = await getMyPosts();
+    const version = ++requestVersionRef.current;
+    postsRequestRef.current = null;
+    setPosts([]);
+    setPostMeta({ hasMore: false, nextCursor: null, loadingMore: false });
 
-      setPosts(response.data.posts);
+    if (!currentUserId) return;
+
+    async function fetchPosts() {
+      try {
+        const response = await getMyPosts();
+
+        if (requestVersionRef.current !== version) return;
+
+        setPosts(response.data.posts);
+        setPostMeta({
+          hasMore: response.data.hasMore,
+          nextCursor: response.data.nextCursor,
+          loadingMore: false,
+        });
+      } catch (error) {
+        if (requestVersionRef.current === version) {
+          logger.error("profile.posts_fetch.failed", error);
+        }
+      }
     }
     fetchPosts();
-  }, []);
+
+    return () => {
+      if (requestVersionRef.current === version) {
+        requestVersionRef.current += 1;
+      }
+    };
+  }, [currentUserId]);
 
   useEffect(() => {
     fetchUser();
@@ -27,6 +62,60 @@ function Profile() {
     setIsEditProfileOpen(false);
   }
 
+  async function loadMorePosts() {
+    if (
+      !currentUserId ||
+      !postMeta.hasMore ||
+      !postMeta.nextCursor ||
+      postMeta.loadingMore ||
+      postsRequestRef.current
+    ) {
+      return;
+    }
+
+    const version = requestVersionRef.current;
+    const requestMarker = {};
+    postsRequestRef.current = requestMarker;
+    setPostMeta((meta) => ({ ...meta, loadingMore: true }));
+
+    try {
+      const response = await getMyPosts(postMeta.nextCursor);
+
+      if (requestVersionRef.current !== version) return;
+
+      setPosts((current) => {
+        const map = new Map(
+          [...current, ...response.data.posts].map((post) => [post._id, post]),
+        );
+        return [...map.values()];
+      });
+      setPostMeta({
+        hasMore: response.data.hasMore,
+        nextCursor: response.data.nextCursor,
+        loadingMore: false,
+      });
+    } catch (error) {
+      if (requestVersionRef.current === version) {
+        logger.error("profile.posts_load_more.failed", error);
+      }
+    } finally {
+      if (postsRequestRef.current === requestMarker) {
+        postsRequestRef.current = null;
+      }
+      if (requestVersionRef.current === version) {
+        setPostMeta((meta) => ({ ...meta, loadingMore: false }));
+      }
+    }
+  }
+
+  function handleProfileScroll(event) {
+    const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+
+    if (scrollHeight - scrollTop - clientHeight <= 200) {
+      loadMorePosts();
+    }
+  }
+
   if (!user) {
     return <h1>Loading...</h1>;
   }
@@ -34,6 +123,7 @@ function Profile() {
   return (
     <div
       className="bg-[#030511] h-screen overflow-y-auto bg-black"
+      onScroll={handleProfileScroll}
       style={{
         scrollbarWidth: "thin",
         scrollbarColor: "rgba(139, 92, 246, 0.5) transparent",

@@ -4,9 +4,19 @@ const Post = require("../models/Post");
 const Notification = require("../models/Notification");
 const { getIO, getUserSocketIds } = require("../socket");
 const mongoose = require("mongoose");
-const { INPUT_LIMITS, escapeRegex } = require("../utils/validation");
+const {
+  INPUT_LIMITS,
+  InputValidationError,
+  escapeRegex,
+  parsePaginationLimit,
+} = require("../utils/validation");
 const logger = require("../utils/logger");
 const { lockPostForReference } = require("../utils/postReference");
+const {
+  InvalidPaginationCursorError,
+  buildPaginationFilter,
+  encodePaginationCursor,
+} = require("../utils/paginationCursor");
 
 async function followUser(req, res) {
   try {
@@ -357,16 +367,34 @@ async function getUserProfile(req, res) {
       });
     }
 
+    const limit = parsePaginationLimit(req.query.limit, 12, 30);
+    const cursor = req.query.cursor;
     const posts = await Post.find({
       user: req.user._id,
-    });
+      ...buildPaginationFilter("createdAt", cursor),
+    })
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(limit + 1);
+    const hasMore = posts.length > limit;
+    const page = hasMore ? posts.slice(0, limit) : posts;
 
     res.status(200).json({
       message: "Profile fetched successfully",
       user,
-      posts,
+      posts: page,
+      hasMore,
+      nextCursor: hasMore
+        ? encodePaginationCursor(page[page.length - 1], "createdAt")
+        : null,
     });
   } catch (error) {
+    if (
+      error instanceof InvalidPaginationCursorError ||
+      error instanceof InputValidationError
+    ) {
+      return res.status(400).json({ message: error.message });
+    }
+
     logger.error("user.profile.failed", error);
 
     res.status(500).json({
@@ -388,16 +416,34 @@ async function getProfileById(req, res) {
       });
     }
 
+    const limit = parsePaginationLimit(req.query.limit, 12, 30);
+    const cursor = req.query.cursor;
     const posts = await Post.find({
       user: req.params.id,
-    });
+      ...buildPaginationFilter("createdAt", cursor),
+    })
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(limit + 1);
+    const hasMore = posts.length > limit;
+    const page = hasMore ? posts.slice(0, limit) : posts;
 
     res.status(200).json({
       message: "Profile fetched successfully",
       user,
-      posts,
+      posts: page,
+      hasMore,
+      nextCursor: hasMore
+        ? encodePaginationCursor(page[page.length - 1], "createdAt")
+        : null,
     });
   } catch (error) {
+    if (
+      error instanceof InvalidPaginationCursorError ||
+      error instanceof InputValidationError
+    ) {
+      return res.status(400).json({ message: error.message });
+    }
+
     logger.error("user.profile_by_id.failed", error);
 
     res.status(500).json({
