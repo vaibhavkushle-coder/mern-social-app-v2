@@ -39,6 +39,23 @@ const allowedOrigins = getAllowedOrigins(
   defaultAllowedOrigins,
 );
 
+function createSocketEventLimiter(capacity, refillPerSecond) {
+  let tokens = capacity;
+  let lastRefill = Date.now();
+
+  return () => {
+    const now = Date.now();
+    const elapsedSeconds = (now - lastRefill) / 1000;
+    tokens = Math.min(capacity, tokens + elapsedSeconds * refillPerSecond);
+    lastRefill = now;
+
+    if (tokens < 1) return false;
+
+    tokens -= 1;
+    return true;
+  };
+}
+
 const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/authRoutes");
@@ -93,6 +110,11 @@ io.use(async (socket, next) => {
 io.on("connection", async (socket) => {
   socket.join(getTokenSocketRoom(socket.tokenHash));
 
+  const allowTyping = createSocketEventLimiter(40, 8);
+  const allowStopTyping = createSocketEventLimiter(20, 4);
+  const allowMessageSeen = createSocketEventLimiter(20, 2);
+  const allowMessageDelivered = createSocketEventLimiter(40, 5);
+
   let isRevoked;
 
   try {
@@ -130,6 +152,7 @@ io.on("connection", async (socket) => {
     const receiverId = payload?.receiverId;
 
     if (!isValidObjectId(receiverId)) return;
+    if (!allowTyping()) return;
 
     const receiverSocketIds = getUserSocketIds(receiverId);
 
@@ -142,6 +165,7 @@ io.on("connection", async (socket) => {
     const receiverId = payload?.receiverId;
 
     if (!isValidObjectId(receiverId)) return;
+    if (!allowStopTyping()) return;
 
     const receiverSocketIds = getUserSocketIds(receiverId);
 
@@ -160,6 +184,8 @@ io.on("connection", async (socket) => {
       ) {
         return;
       }
+
+      if (!allowMessageSeen()) return;
 
       const [seenMessageExists, unseenMessageExists] = await Promise.all([
         Message.exists({
@@ -199,6 +225,7 @@ io.on("connection", async (socket) => {
       const messageIds = [...new Set(requestedIds)].filter(isValidObjectId);
 
       if (messageIds.length === 0) return;
+      if (!allowMessageDelivered()) return;
 
       const messages = await Message.find({
         _id: { $in: messageIds },
