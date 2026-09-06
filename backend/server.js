@@ -225,16 +225,19 @@ io.on("connection", async (socket) => {
       const becameOffline = removeUserSocket(socket.userId, socket.id);
 
       if (becameOffline) {
-        const lastSeen = new Date();
-        await User.findByIdAndUpdate(socket.userId, { lastSeen });
+        try {
+          const lastSeen = new Date();
+          await User.findByIdAndUpdate(socket.userId, { lastSeen });
 
-        socket.broadcast.emit("user-offline", {
-          userId: socket.userId,
-          lastSeen: lastSeen.toISOString(),
-        });
+          socket.broadcast.emit("user-offline", {
+            userId: socket.userId,
+            lastSeen: lastSeen.toISOString(),
+          });
+        } catch (error) {
+          logger.error("socket.disconnect_presence.failed", error);
+        }
       }
     }
-
   });
 });
 
