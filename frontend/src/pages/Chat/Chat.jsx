@@ -234,19 +234,23 @@ function Chat() {
         setMessages((prev) => {
           if (!isCurrentVersion()) return prev;
 
-          const serverMessageIds = new Set(
-            response.data.messages.map((message) => message._id),
-          );
-          const localMessages = prev.filter(
-            (message) =>
-              message.clientMessageId &&
-              !serverMessageIds.has(message._id) &&
-              message.receiver?._id?.toString() === id?.toString(),
-          );
+          const currentConversationMessages = prev.filter((message) => {
+            const senderId = (
+              message.sender?._id || message.sender
+            )?.toString();
+            const receiverId = (
+              message.receiver?._id || message.receiver
+            )?.toString();
+
+            return (
+              (senderId === currentUserId && receiverId === id?.toString()) ||
+              (senderId === id?.toString() && receiverId === currentUserId)
+            );
+          });
 
           const merged = mergeMessages(
+            currentConversationMessages,
             response.data.messages,
-            localMessages,
           );
           setMessageCache((cache) => {
             if (!isCurrentVersion()) return cache;
