@@ -20,6 +20,7 @@ function Messages() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingConversations, setDeletingConversations] = useState(false);
 
   const {
     conversations,
@@ -88,7 +89,7 @@ function Messages() {
   }, [selectMode, selectedIds.length]);
 
   async function handleDeleteConversation() {
-    if (selectedIds.length === 0) return;
+    if (selectedIds.length === 0 || deletingConversations) return;
 
     const accountGeneration = getConversationAccountGeneration();
     const removedUnreadCount = conversations
@@ -99,6 +100,7 @@ function Messages() {
       );
 
     try {
+      setDeletingConversations(true);
       for (const userId of selectedIds) {
         await deleteConversation(userId);
       }
@@ -111,6 +113,8 @@ function Messages() {
       setSelectMode(false);
     } catch (error) {
       logger.error("conversation.delete.failed", error);
+    } finally {
+      setDeletingConversations(false);
     }
   }
 
@@ -618,6 +622,7 @@ function Messages() {
               >
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deletingConversations}
                   className="px-4 py-2
                 rounded-xl
                 text-sm font-semibold
@@ -634,6 +639,7 @@ function Messages() {
                     await handleDeleteConversation();
                     setShowDeleteConfirm(false);
                   }}
+                  disabled={deletingConversations}
                   className="px-4 py-2
                 rounded-xl
                 text-sm font-semibold
@@ -643,7 +649,7 @@ function Messages() {
                 active:scale-95
                 transition"
                 >
-                  Delete
+                  {deletingConversations ? "Deleting..." : "Delete"}
                 </button>
               </div>
             </div>

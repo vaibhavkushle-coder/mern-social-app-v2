@@ -5,6 +5,7 @@ function EditPostModal({
   onClose,
   onSave,
   isClosing,
+  saving = false,
 }) {
   if (!editingPost) return null;
 
@@ -71,6 +72,7 @@ function EditPostModal({
               className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-gray-300
               cursor-pointer font-medium transition shadow-lg "
               onClick={onClose}
+              disabled={saving}
             >
               Cancel
             </button>
@@ -78,9 +80,9 @@ function EditPostModal({
               className="bg-blue-500 px-5 py-2 rounded-lg font-medium text-white
               cursor-pointer shadow-lg hover:bg-blue-600"
               onClick={onSave}
+              disabled={saving}
             >
-              {" "}
-              Save
+              {saving ? "Saving..." : "Save"}
             </button>
           </div>
         </div>

@@ -38,6 +38,7 @@ function PostCard({
   onCommentDelete,
   onEditComment,
   onEditPost,
+  likePending = false,
 }) {
   const [comment, setComment] = useState("");
   const [editText, setEditText] = useState("");
@@ -61,6 +62,12 @@ function PostCard({
   const [savingPost, setSavingPost] = useState(false);
   const [conversations, setConversations] = useState([]);
   const [loadingShareUsers, setLoadingShareUsers] = useState(false);
+  const [deletingPost, setDeletingPost] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState(null);
+  const [reportingPost, setReportingPost] = useState(false);
+  const [sharingUserId, setSharingUserId] = useState(null);
+  const [savingPostEdit, setSavingPostEdit] = useState(false);
+  const [loadingLikes, setLoadingLikes] = useState(false);
 
   const navigate = useNavigate();
 
@@ -135,13 +142,15 @@ function PostCard({
       setShowLikeAnimation(false);
     }, 800);
 
-    if (!isLiked) {
+    if (!isLiked && !likePending) {
       onLike(post._id);
     }
   }
 
   async function handleShowLikes(postId) {
+    if (loadingLikes) return;
     try {
+      setLoadingLikes(true);
       const response = await getPostLikes(postId);
 
       setLikes(response.data.likes);
@@ -149,6 +158,8 @@ function PostCard({
       setShowLikes(true);
     } catch (error) {
       logger.error("post.likes.failed", error);
+    } finally {
+      setLoadingLikes(false);
     }
   }
 
@@ -173,7 +184,9 @@ function PostCard({
   }
 
   async function handleSaveEdit() {
+    if (savingPostEdit) return;
     try {
+      setSavingPostEdit(true);
       await onEditPost(post._id, caption);
 
       setIsClosing(true);
@@ -185,6 +198,8 @@ function PostCard({
       }, 350);
     } catch (error) {
       logger.error("post.edit.failed", error);
+    } finally {
+      setSavingPostEdit(false);
     }
   }
   async function handleSaveBookmark() {
@@ -221,7 +236,9 @@ function PostCard({
   }
 
   async function handleSendPost(shareUser) {
+    if (sharingUserId) return;
     try {
+      setSharingUserId(shareUser._id);
       await sendMessage(shareUser._id, "📷 Shared a post", post._id);
 
       showToast("Post shared successfully 📤", "success");
@@ -233,6 +250,30 @@ function PostCard({
     } catch (error) {
       logger.error("post.share_send.failed", error);
       showToast("Failed to share post", "error");
+    } finally {
+      setSharingUserId(null);
+    }
+  }
+
+  async function handleDeletePost() {
+    if (deletingPost) return;
+    try {
+      setDeletingPost(true);
+      await onDelete(post._id);
+      setOpenPostMenuId(null);
+    } finally {
+      setDeletingPost(false);
+    }
+  }
+
+  async function handleDeleteComment(commentId) {
+    if (deletingCommentId) return;
+    try {
+      setDeletingCommentId(commentId);
+      await onCommentDelete(post._id, commentId);
+      setOpenMenuId(null);
+    } finally {
+      setDeletingCommentId(null);
     }
   }
 
@@ -357,21 +398,24 @@ function PostCard({
 
               {userId === post.user._id && (
                 <button
-                  onClick={() => onDelete(post._id)}
+                  onClick={handleDeletePost}
+                  disabled={deletingPost}
                   className="flex items-center gap-3 w-full
         px-4 py-2.5 text-sm font-medium text-red-500
         hover:bg-red-50
         transition-all duration-200"
                 >
                   <FiTrash2 size={18} />
-                  <span>Delete Post</span>
+                  <span>{deletingPost ? "Deleting..." : "Delete Post"}</span>
                 </button>
               )}
 
               {userId !== post.user._id && (
                 <button
                   onClick={async () => {
+                    if (reportingPost) return;
                     try {
+                      setReportingPost(true);
                       await reportPost(post._id);
 
                       setOpenPostMenuId(null);
@@ -385,15 +429,18 @@ function PostCard({
                       } else {
                         showToast("Failed to report post 🚩", "error");
                       }
+                    } finally {
+                      setReportingPost(false);
                     }
                   }}
+                  disabled={reportingPost}
                   className="flex items-center gap-3 w-full
         px-4 py-2.5 text-sm font-medium text-orange-500
         hover:bg-orange-50
         transition-all duration-200"
                 >
                   <FiFlag size={18} />
-                  <span>Report Post</span>
+                  <span>{reportingPost ? "Reporting..." : "Report Post"}</span>
                 </button>
               )}
 
@@ -455,17 +502,27 @@ function PostCard({
           {isLiked ? (
             <button
               onClick={() => onUnlike(post._id)}
+              disabled={likePending}
               className="text-purple-400 hover:scale-110 
               active:scale-90 transition-all hover:text-purple-300"
             >
-              <FaHeart size={26} />
+              {likePending ? (
+                <span className="block h-5 w-5 animate-spin rounded-full border-2 border-purple-400/30 border-t-purple-400" />
+              ) : (
+                <FaHeart size={26} />
+              )}
             </button>
           ) : (
             <button
               onClick={() => onLike(post._id)}
+              disabled={likePending}
               className="hover:text-purple-400 hover:scale-110 active:scale-90 transition-all"
             >
-              <FiHeart size={26} />
+              {likePending ? (
+                <span className="block h-5 w-5 animate-spin rounded-full border-2 border-purple-400/30 border-t-purple-400" />
+              ) : (
+                <FiHeart size={26} />
+              )}
             </button>
           )}
 
@@ -501,7 +558,13 @@ function PostCard({
             ${isSave ? "text-purple-400" : "text-gray-300"}
             ${savingPost ? "opacity-50 cursor-not-allowed" : ""}`}
         >
-          {isSave ? <FaBookmark size={24} /> : <FiBookmark size={24} />}
+          {savingPost ? (
+            <span className="block h-5 w-5 animate-spin rounded-full border-2 border-purple-400/30 border-t-purple-400" />
+          ) : isSave ? (
+            <FaBookmark size={24} />
+          ) : (
+            <FiBookmark size={24} />
+          )}
         </button>
       </div>
 
@@ -509,7 +572,9 @@ function PostCard({
         onClick={() => handleShowLikes(post._id)}
         className="px-4  cursor-pointer hover:underline text-sm text-gray-300"
       >
-        {post.likes.length === 0 ? (
+        {loadingLikes ? (
+          "Loading likes..."
+        ) : post.likes.length === 0 ? (
           "Be the first to like this post"
         ) : post.likes.length === 1 ? (
           <>
@@ -759,13 +824,15 @@ function PostCard({
                         text-red-400
                         hover:bg-red-950/30
                         transition-all duration-200"
-                              onClick={() => {
-                                onCommentDelete(post._id, comment._id);
-                                setOpenMenuId(null);
-                              }}
+                              onClick={() => handleDeleteComment(comment._id)}
+                              disabled={deletingCommentId === comment._id}
                             >
                               <FiTrash2 size={15} />
-                              <span>Delete</span>
+                              <span>
+                                {deletingCommentId === comment._id
+                                  ? "Deleting..."
+                                  : "Delete"}
+                              </span>
                             </button>
                           </div>
                         )}
@@ -1102,6 +1169,7 @@ function PostCard({
                         {/* Send */}
                         <button
                           onClick={() => handleSendPost(shareUser)}
+                          disabled={sharingUserId === shareUser._id}
                           className="shrink-0
                     px-3.5 py-1.5
                     rounded-lg
@@ -1112,7 +1180,9 @@ function PostCard({
                     active:scale-95
                     transition-all duration-200"
                         >
-                          Send
+                          {sharingUserId === shareUser._id
+                            ? "Sending..."
+                            : "Send"}
                         </button>
                       </div>
                     ))
@@ -1225,6 +1295,7 @@ function PostCard({
                       {/* Send */}
                       <button
                         onClick={() => handleSendPost(shareUser)}
+                        disabled={sharingUserId === shareUser._id}
                         className="shrink-0
                   px-3.5 py-1.5
                   rounded-lg
@@ -1235,7 +1306,9 @@ function PostCard({
                   active:scale-95
                   transition-all duration-200"
                       >
-                        Send
+                        {sharingUserId === shareUser._id
+                          ? "Sending..."
+                          : "Send"}
                       </button>
                     </div>
                   );
@@ -1420,6 +1493,7 @@ function PostCard({
         onClose={handleCloseModal}
         onSave={handleSaveEdit}
         isClosing={isClosing}
+        saving={savingPostEdit}
       />
     </div>
   );

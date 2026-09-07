@@ -106,7 +106,13 @@ function FollowButton({ profileUser }) {
     }
   `}
     >
-      {loading ? "Loading..." : isFollowing ? "Unfollow" : "Follow"}
+      {loading
+        ? isFollowing
+          ? "Unfollowing..."
+          : "Following..."
+        : isFollowing
+          ? "Unfollow"
+          : "Follow"}
     </button>
   );
 }

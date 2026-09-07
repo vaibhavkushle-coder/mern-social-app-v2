@@ -15,6 +15,7 @@ function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const navigate = useNavigate();
 
@@ -23,6 +24,7 @@ function Register() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (submitting) return;
 
     // Validation
     if (!name && !email && !password) {
@@ -46,6 +48,7 @@ function Register() {
     }
 
     try {
+      setSubmitting(true);
       const response = await register({
         name,
         email,
@@ -67,6 +70,8 @@ function Register() {
           "Registration failed. Please try again.",
         "error",
       );
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -167,9 +172,14 @@ function Register() {
 
           {/* Register Button */}
           <div className="mt-2">
-            <Button type="submit">
-              <UserPlus size={18} />
-              <span>Register</span>
+            <Button
+              type="submit"
+              loading={submitting}
+              loadingText="Creating account..."
+              disabled={submitting}
+            >
+              {!submitting && <UserPlus size={18} />}
+              <span>{submitting ? "Creating account..." : "Register"}</span>
             </Button>
           </div>
 

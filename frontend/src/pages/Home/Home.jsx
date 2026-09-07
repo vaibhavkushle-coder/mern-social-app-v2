@@ -344,6 +344,7 @@ function Home() {
               onCommentDelete={handleCommentDelete}
               onEditComment={handleEditComment}
               onEditPost={handleEditPost}
+              likePending={Boolean(likeLoading[post._id])}
             />
 
             {index === 0 && suggestedUsers.length > 0 && (

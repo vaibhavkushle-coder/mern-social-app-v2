@@ -15,6 +15,7 @@ import { getUserProfile } from "../../services/userService";
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const { setUser } = useUser();
   const { showToast } = useToast();
@@ -23,6 +24,7 @@ function Login() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (submitting) return;
 
     // Validation
     if (!email && !password) {
@@ -43,6 +45,7 @@ function Login() {
     let tokenStored = false;
 
     try {
+      setSubmitting(true);
       const response = await login({
         email,
         password,
@@ -70,6 +73,8 @@ function Login() {
           "Login failed. Please check your details.",
         "error",
       );
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -157,7 +162,14 @@ function Login() {
 
           {/* Login Button */}
           <div className="mt-2">
-            <Button type="submit">Login</Button>
+            <Button
+              type="submit"
+              loading={submitting}
+              loadingText="Logging in..."
+              disabled={submitting}
+            >
+              {submitting ? "Logging in..." : "Login"}
+            </Button>
           </div>
 
           {/* Register */}

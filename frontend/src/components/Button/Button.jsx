@@ -4,6 +4,7 @@ function Button({
   type = "button",
   variant = "primary",
   loading = false,
+  loadingText = "Loading...",
   disabled = false,
 }) {
   const baseClass =
@@ -26,7 +27,7 @@ function Button({
         disabled || loading ? "opacity-50 cursor-not-allowed" : ""
       }`}
     >
-      {loading ? "Loading..." : children}
+      {loading ? loadingText : children}
     </button>
   );
 }

@@ -26,6 +26,7 @@ function ProfileContent({
   const [isFollowingOpen, setIsFollowingOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [removingFollowerId, setRemovingFollowerId] = useState(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const { socket } = useSocket();
   const { showToast } = useToast();
@@ -127,7 +128,10 @@ function ProfileContent({
   }, [isFollowersOpen, isFollowingOpen]);
 
   async function handleLogout() {
+    if (loggingOut) return;
+
     try {
+      setLoggingOut(true);
       await logout();
     } catch {
       logger.warn("auth.logout.server_failed");
@@ -492,6 +496,7 @@ function ProfileContent({
 
             <button
               onClick={handleLogout}
+              disabled={loggingOut}
               className="
                 flex items-center gap-3
                 px-4 py-2.5
@@ -504,7 +509,9 @@ function ProfileContent({
             >
               <FiLogOut size={17} />
 
-              <span className="font-medium text-sm">Logout</span>
+              <span className="font-medium text-sm">
+                {loggingOut ? "Logging out..." : "Logout"}
+              </span>
             </button>
           </div>
         )}

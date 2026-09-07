@@ -204,6 +204,7 @@ function EditProfileModal({ user, onClose }) {
           <Button
             onClick={handleSubmit}
             loading={saving}
+            loadingText="Saving..."
             disabled={saving || !name.trim()}
           >
             {saving ? "Saving..." : "Save Changes"}

@@ -18,6 +18,7 @@ function Notification() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingNotifications, setDeletingNotifications] = useState(false);
 
   const longPressTimer = useRef(null);
   const longPressed = useRef(false);
@@ -509,6 +510,7 @@ function Notification() {
                   setSelectmode(false);
                   setSelectedIds([]);
                 }}
+                disabled={deletingNotifications}
                 className="
                 px-4 py-2
                 rounded-xl
@@ -524,12 +526,19 @@ function Notification() {
               </button>
 
               <button
-                onClick={() => {
-                  deleteSelectedNotificationsFromState(selectedIds);
-                  setShowDeleteConfirm(false);
-                  setSelectmode(false);
-                  setSelectedIds([]);
+                onClick={async () => {
+                  if (deletingNotifications) return;
+                  try {
+                    setDeletingNotifications(true);
+                    await deleteSelectedNotificationsFromState(selectedIds);
+                    setShowDeleteConfirm(false);
+                    setSelectmode(false);
+                    setSelectedIds([]);
+                  } finally {
+                    setDeletingNotifications(false);
+                  }
                 }}
+                disabled={deletingNotifications}
                 className="
                 px-4 py-2
                 rounded-xl
@@ -541,7 +550,7 @@ function Notification() {
                 border border-red-400/30
               "
               >
-                Delete
+                {deletingNotifications ? "Deleting..." : "Delete"}
               </button>
             </div>
           </div>
