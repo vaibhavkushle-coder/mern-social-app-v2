@@ -39,5 +39,13 @@ notificationSchema.index(
     partialFilterExpression: { type: "like" },
   },
 );
+notificationSchema.index(
+  { fromUser: 1, toUser: 1, type: 1 },
+  {
+    unique: true,
+    name: "unique_follow_notification",
+    partialFilterExpression: { type: "follow" },
+  },
+);
 
 module.exports = mongoose.model("Notification", notificationSchema);

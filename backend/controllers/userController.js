@@ -37,12 +37,12 @@ async function followUser(req, res) {
 
     const session = await mongoose.startSession();
     let followed = false;
-    let populateNotification;
+    let createdNotificationId;
 
     try {
       await session.withTransaction(async () => {
         followed = false;
-        populateNotification = undefined;
+        createdNotificationId = undefined;
         const currentUserUpdate = await User.updateOne(
           {
             _id: req.user._id,
@@ -64,20 +64,25 @@ async function followUser(req, res) {
           throw new Error("User not found during follow");
         }
 
-        const [notification] = await Notification.create(
-          [
-            {
+        const notificationResult = await Notification.updateOne(
+          {
+            fromUser: req.user._id,
+            toUser: userToFollow._id,
+            type: "follow",
+          },
+          {
+            $setOnInsert: {
               fromUser: req.user._id,
               toUser: userToFollow._id,
               type: "follow",
             },
-          ],
-          { session },
+          },
+          { upsert: true, session },
         );
 
-        populateNotification = await Notification.findById(notification._id)
-          .session(session)
-          .populate("fromUser", "name profilePic");
+        if (notificationResult.upsertedCount === 1) {
+          createdNotificationId = notificationResult.upsertedId;
+        }
 
         followed = true;
       });
@@ -95,8 +100,17 @@ async function followUser(req, res) {
       const io = getIO();
       const receiverSocketIds = getUserSocketIds(userToFollow._id.toString());
 
-      if (receiverSocketIds.length > 0) {
-        io.to(receiverSocketIds).emit("new-notification", populateNotification);
+      if (createdNotificationId && receiverSocketIds.length > 0) {
+        const populatedNotification = await Notification.findById(
+          createdNotificationId,
+        ).populate("fromUser", "name profilePic");
+
+        if (populatedNotification) {
+          io.to(receiverSocketIds).emit(
+            "new-notification",
+            populatedNotification,
+          );
+        }
       }
 
       io.to(`profile:${userToFollow._id}`).emit("user-followed", {
@@ -141,10 +155,12 @@ async function unfollowUser(req, res) {
 
     const session = await mongoose.startSession();
     let unfollowed = false;
+    let removedNotifications = [];
 
     try {
       await session.withTransaction(async () => {
         unfollowed = false;
+        removedNotifications = [];
         const currentUserUpdate = await User.updateOne(
           {
             _id: req.user._id,
@@ -166,6 +182,23 @@ async function unfollowUser(req, res) {
           throw new Error("User not found during unfollow");
         }
 
+        removedNotifications = await Notification.find({
+          fromUser: req.user._id,
+          toUser: userToUnfollow._id,
+          type: "follow",
+        })
+          .select("_id")
+          .session(session);
+
+        if (removedNotifications.length > 0) {
+          await Notification.deleteMany(
+            {
+              _id: { $in: removedNotifications.map(({ _id }) => _id) },
+            },
+            { session },
+          );
+        }
+
         unfollowed = true;
       });
     } finally {
@@ -178,13 +211,25 @@ async function unfollowUser(req, res) {
       });
     }
 
-    // Socket
-    const io = getIO();
+    try {
+      const io = getIO();
+      const receiverSocketIds = getUserSocketIds(userToUnfollow._id.toString());
 
-    io.to(`profile:${userToUnfollow._id}`).emit("user-unfollowed", {
-      userId: userToUnfollow._id,
-      followerId: req.user._id,
-    });
+      if (receiverSocketIds.length > 0) {
+        removedNotifications.forEach(({ _id }) => {
+          io.to(receiverSocketIds).emit("notification-removed", {
+            notificationId: _id,
+          });
+        });
+      }
+
+      io.to(`profile:${userToUnfollow._id}`).emit("user-unfollowed", {
+        userId: userToUnfollow._id,
+        followerId: req.user._id,
+      });
+    } catch (socketError) {
+      logger.error("user.unfollow.realtime_failed", socketError);
+    }
 
     res.status(200).json({
       message: "User unfollowed successfully",
