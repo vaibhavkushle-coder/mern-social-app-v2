@@ -150,6 +150,18 @@ function ProfileContent({
       setRemovingFollowerId(userId);
 
       await removeFollower(userId);
+      setUser((prev) => {
+        if (!prev) return prev;
+
+        return {
+          ...prev,
+          followers: (prev.followers || []).filter((follower) => {
+            const followerId = follower?._id || follower;
+
+            return followerId?.toString() !== userId.toString();
+          }),
+        };
+      });
     } catch (error) {
       logger.error("user.remove_follower.failed", error);
 
