@@ -566,31 +566,63 @@ async function deleteConversation(req, res) {
     const otherUserId = req.params.id;
 
     const pair = getCanonicalConversationPair(currentUserId, otherUserId);
-    const conversation = await Conversation.findOne({
-      participantA: pair.participantA,
-      participantB: pair.participantB,
-    });
+    const deletedAt = new Date();
+    const deletionMarkerId = new mongoose.Types.ObjectId();
+    const conversation = await Conversation.findOneAndUpdate(
+      {
+        participantA: pair.participantA,
+        participantB: pair.participantB,
+      },
+      [
+        {
+          $set: {
+            deletedFor: {
+              $cond: [
+                {
+                  $in: [
+                    currentUserId,
+                    { $ifNull: ["$deletedFor.user", []] },
+                  ],
+                },
+                {
+                  $map: {
+                    input: { $ifNull: ["$deletedFor", []] },
+                    as: "deletion",
+                    in: {
+                      $cond: [
+                        { $eq: ["$$deletion.user", currentUserId] },
+                        { $mergeObjects: ["$$deletion", { deletedAt }] },
+                        "$$deletion",
+                      ],
+                    },
+                  },
+                },
+                {
+                  $concatArrays: [
+                    { $ifNull: ["$deletedFor", []] },
+                    [
+                      {
+                        _id: deletionMarkerId,
+                        user: currentUserId,
+                        deletedAt,
+                      },
+                    ],
+                  ],
+                },
+              ],
+            },
+            updatedAt: deletedAt,
+          },
+        },
+      ],
+      { new: true },
+    );
 
     if (!conversation) {
       return res.status(404).json({
         message: "Conversation not found",
       });
     }
-
-    const existingDelete = conversation.deletedFor.find(
-      (item) => item.user.toString() === currentUserId.toString(),
-    );
-
-    if (existingDelete) {
-      existingDelete.deletedAt = new Date();
-    } else {
-      conversation.deletedFor.push({
-        user: currentUserId,
-        deletedAt: new Date(),
-      });
-    }
-
-    await conversation.save();
 
     res.status(200).json({
       message: "Conversation deleted successfully",

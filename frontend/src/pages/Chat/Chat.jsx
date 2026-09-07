@@ -108,6 +108,9 @@ function Chat() {
   const messagesContainerRef = useRef(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  const isNearBottomRef = useRef(true);
+  const initialScrollRef = useRef(true);
+  const skipAutoScrollRef = useRef(false);
   const inputRef = useRef(null);
 
   const touchStartX = useRef(null);
@@ -204,6 +207,9 @@ function Chat() {
     const accountChanged = messageOwnerUserIdRef.current !== currentUserId;
 
     olderRequestRef.current = false;
+    isNearBottomRef.current = true;
+    initialScrollRef.current = true;
+    skipAutoScrollRef.current = false;
     initialFetchVersionRef.current = version;
     initialFetchSocketMessagesRef.current = [];
 
@@ -527,6 +533,15 @@ function Chat() {
 
     if (!container) return;
 
+    if (skipAutoScrollRef.current) {
+      skipAutoScrollRef.current = false;
+      return;
+    }
+
+    if (!initialScrollRef.current && !isNearBottomRef.current) return;
+
+    initialScrollRef.current = false;
+
     requestAnimationFrame(() => {
       container.scrollTop = container.scrollHeight;
     });
@@ -714,6 +729,7 @@ function Chat() {
         if (version !== requestVersion.current) return current;
 
         const merged = mergeMessages(response.data.messages, current);
+        skipAutoScrollRef.current = true;
         setMessageCache((cache) => {
           if (version !== requestVersion.current) return cache;
 
@@ -1140,7 +1156,13 @@ z-50 overflow-hidden"
         <div
           ref={messagesContainerRef}
           onScroll={(event) => {
-            if (event.currentTarget.scrollTop < 80)
+            const container = event.currentTarget;
+            isNearBottomRef.current =
+              container.scrollHeight - container.scrollTop -
+                container.clientHeight <=
+              80;
+
+            if (container.scrollTop < 80)
               loadOlderMessages().catch((error) => logger.error("chat.older_messages.failed", error));
           }}
           className={`flex-1 overflow-y-auto px-5 py-5
