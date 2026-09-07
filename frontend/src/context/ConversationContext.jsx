@@ -184,6 +184,26 @@ export function ConversationProvider({ children }) {
     }
   }, []);
 
+  const clearConversationMessageCache = useCallback((otherUserIds) => {
+    const targetUserIds = new Set(
+      (Array.isArray(otherUserIds) ? otherUserIds : [otherUserIds])
+        .filter(Boolean)
+        .map((userId) => userId.toString()),
+    );
+
+    if (targetUserIds.size === 0) return;
+
+    setMessageCache((cache) => {
+      const nextCache = { ...cache };
+
+      targetUserIds.forEach((userId) => {
+        delete nextCache[userId];
+      });
+
+      return nextCache;
+    });
+  }, []);
+
   useLayoutEffect(() => {
     setConversations([]);
     setConversationsLoaded(false);
@@ -238,6 +258,7 @@ export function ConversationProvider({ children }) {
         conversationMeta,
         messageUnreadCount,
         clearConversationUnread,
+        clearConversationMessageCache,
         messageCache,
         setMessageCache,
       }}

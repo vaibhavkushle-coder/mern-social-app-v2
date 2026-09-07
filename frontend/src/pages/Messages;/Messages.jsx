@@ -27,6 +27,7 @@ function Messages() {
     loadMoreConversations,
     conversationsLoaded,
     conversationMeta,
+    clearConversationMessageCache,
   } = useConversation();
   const { user } = useUser();
 
@@ -73,6 +74,8 @@ function Messages() {
       for (const userId of selectedIds) {
         await deleteConversation(userId);
       }
+
+      clearConversationMessageCache(selectedIds);
 
       setConversations((prev) =>
         prev.filter(

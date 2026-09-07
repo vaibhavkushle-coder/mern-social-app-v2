@@ -115,6 +115,8 @@ function Chat() {
   const longPressed = useRef(false);
   const requestVersion = useRef(0);
   const olderRequestRef = useRef(false);
+  const initialFetchVersionRef = useRef(null);
+  const initialFetchSocketMessagesRef = useRef([]);
   const messageOwnerUserIdRef = useRef(null);
   const messageCacheRef = useRef(messageCache);
   messageCacheRef.current = messageCache;
@@ -197,6 +199,8 @@ function Chat() {
     const accountChanged = messageOwnerUserIdRef.current !== currentUserId;
 
     olderRequestRef.current = false;
+    initialFetchVersionRef.current = version;
+    initialFetchSocketMessagesRef.current = [];
 
     if (accountChanged) {
       messageOwnerUserIdRef.current = currentUserId;
@@ -231,25 +235,22 @@ function Chat() {
 
         if (!isCurrentVersion()) return false;
 
+        const socketMessagesDuringFetch =
+          initialFetchSocketMessagesRef.current;
+        initialFetchVersionRef.current = null;
+
         setMessages((prev) => {
           if (!isCurrentVersion()) return prev;
 
-          const currentConversationMessages = prev.filter((message) => {
-            const senderId = (
-              message.sender?._id || message.sender
-            )?.toString();
-            const receiverId = (
-              message.receiver?._id || message.receiver
-            )?.toString();
-
-            return (
-              (senderId === currentUserId && receiverId === id?.toString()) ||
-              (senderId === id?.toString() && receiverId === currentUserId)
-            );
-          });
+          const pendingOptimisticMessages = prev.filter(
+            (message) =>
+              message.clientMessageId &&
+              message._id?.toString().startsWith("temp:"),
+          );
 
           const merged = mergeMessages(
-            currentConversationMessages,
+            pendingOptimisticMessages,
+            socketMessagesDuringFetch,
             response.data.messages,
           );
           setMessageCache((cache) => {
@@ -280,6 +281,7 @@ function Chat() {
         return response.data.messages;
       } catch (error) {
         if (isCurrentVersion()) {
+          initialFetchVersionRef.current = null;
           logger.error("chat.initial_messages.failed", error);
         }
 
@@ -339,6 +341,8 @@ function Chat() {
 
     return () => {
       if (requestVersion.current === version) {
+        initialFetchVersionRef.current = null;
+        initialFetchSocketMessagesRef.current = [];
         requestVersion.current += 1;
       }
     };
@@ -363,6 +367,13 @@ function Chat() {
 
       if (!isCurrentConversation) {
         return;
+      }
+
+      if (initialFetchVersionRef.current === requestVersion.current) {
+        initialFetchSocketMessagesRef.current = mergeMessages(
+          initialFetchSocketMessagesRef.current,
+          message,
+        );
       }
 
       setMessages((prev) => mergeMessages(prev, message));
