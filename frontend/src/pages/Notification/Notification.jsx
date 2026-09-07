@@ -11,6 +11,7 @@ import {
 } from "react-icons/fi";
 import { useState, useRef } from "react";
 import { useUser } from "../../hooks/useUser";
+import LoadingMoreIndicator from "../../components/LoadingMoreIndicator/LoadingMoreIndicator";
 
 function Notification() {
   const [selectMode, setSelectmode] = useState(false);
@@ -465,6 +466,9 @@ function Notification() {
                   </div>
                 </div>
               ))}
+              {notificationMeta.loadingMore && (
+                <LoadingMoreIndicator label="Loading more notifications..." />
+              )}
             </div>
           )}
         </>

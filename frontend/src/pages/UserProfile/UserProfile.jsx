@@ -6,6 +6,7 @@ import ProfileContent from "../../components/ProfileContent/ProfileContent";
 import { useUser } from "../../hooks/useUser";
 import { useNavigate } from "react-router-dom";
 import FollowButton from "../../components/FollowButton/FollowButton";
+import LoadingMoreIndicator from "../../components/LoadingMoreIndicator/LoadingMoreIndicator";
 
 function UserProfile() {
   const { id } = useParams();
@@ -249,6 +250,9 @@ function UserProfile() {
             </div>
           )}
         </ProfileContent>
+        {postMeta.loadingMore && (
+          <LoadingMoreIndicator label="Loading more posts..." />
+        )}
       </div>
     </>
   );

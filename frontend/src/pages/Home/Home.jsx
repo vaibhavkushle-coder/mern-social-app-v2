@@ -16,6 +16,7 @@ import { useToast } from "../../hooks/useToast";
 import SuggestedUsers from "../../components/SuggestedUsers/SuggestedUsers";
 import { getPostById } from "../../services/postService";
 import logger from "../../utils/logger";
+import LoadingMoreIndicator from "../../components/LoadingMoreIndicator/LoadingMoreIndicator";
 
 function Home() {
   const [error, setError] = useState("");
@@ -353,7 +354,9 @@ function Home() {
             )}
           </div>
         ))}
-        {!selectedPostId && feedMeta.loadingMore && <p className="text-center text-gray-400">Loading more posts...</p>}
+        {!selectedPostId && feedMeta.loadingMore && (
+          <LoadingMoreIndicator label="Loading more posts..." />
+        )}
       </div>
     </div>
   );

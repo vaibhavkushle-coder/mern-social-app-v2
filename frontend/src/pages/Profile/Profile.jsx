@@ -5,6 +5,7 @@ import EditProfileModal from "../../components/EditProfileModal/EditProfileModal
 import Navbar from "../../components/Navbar/Navbar";
 import ProfileContent from "../../components/ProfileContent/ProfileContent";
 import logger from "../../utils/logger";
+import LoadingMoreIndicator from "../../components/LoadingMoreIndicator/LoadingMoreIndicator";
 
 function Profile() {
   const [posts, setPosts] = useState([]);
@@ -204,6 +205,9 @@ function Profile() {
             Edit Profile
           </button>
         </ProfileContent>
+        {postMeta.loadingMore && (
+          <LoadingMoreIndicator label="Loading more posts..." />
+        )}
         {isEditProfileOpen && (
           <EditProfileModal user={user} onClose={handleCloseEditProfile} />
         )}

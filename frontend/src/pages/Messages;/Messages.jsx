@@ -12,6 +12,7 @@ import {
 import getTimeAgo from "../../utils/getTimeAgo";
 import { useConversation } from "../../hooks/useConversation";
 import { useUser } from "../../hooks/useUser";
+import LoadingMoreIndicator from "../../components/LoadingMoreIndicator/LoadingMoreIndicator";
 
 function Messages() {
   const [search, setSearch] = useState("");
@@ -578,6 +579,9 @@ function Messages() {
                   </div>
                 </div>
               ))}
+              {conversationMeta.loadingMore && (
+                <LoadingMoreIndicator label="Loading more conversations..." />
+              )}
             </div>
           </div>
         )}

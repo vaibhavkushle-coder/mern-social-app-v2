@@ -25,6 +25,7 @@ import { useSocket } from "../../hooks/useSocket";
 import { useToast } from "../../hooks/useToast";
 import { useConversation } from "../../hooks/useConversation";
 import logger from "../../utils/logger";
+import LoadingMoreIndicator from "../../components/LoadingMoreIndicator/LoadingMoreIndicator";
 
 const EmojiPicker = lazy(() => import("emoji-picker-react"));
 
@@ -77,6 +78,7 @@ function Chat() {
   const [isTyping, setIsTyping] = useState(false);
   const [sending, setSending] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState(true);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -226,6 +228,7 @@ function Chat() {
     const accountChanged = messageOwnerUserIdRef.current !== currentUserId;
 
     olderRequestRef.current = false;
+    setLoadingOlderMessages(false);
     isNearBottomRef.current = true;
     initialScrollRef.current = true;
     skipAutoScrollRef.current = false;
@@ -738,6 +741,7 @@ function Chat() {
     const currentUserId = user?._id?.toString();
     const cursor = messageMeta.nextCursor;
     olderRequestRef.current = true;
+    setLoadingOlderMessages(true);
     const container = messagesContainerRef.current;
     const oldHeight = container?.scrollHeight || 0;
     try {
@@ -807,6 +811,7 @@ function Chat() {
     } finally {
       if (version === requestVersion.current) {
         olderRequestRef.current = false;
+        setLoadingOlderMessages(false);
       }
     }
   }
@@ -1220,6 +1225,9 @@ z-50 overflow-hidden"
        bg-[linear-gradient(rgba(5,7,15,0.45),rgba(5,7,15,0.45)),url('/images/chat-bg.png.jpeg')]
         bg-cover bg-center  ${editingMessage ? "blur-sm pointer-events-none" : ""}`}
         >
+          {loadingOlderMessages && (
+            <LoadingMoreIndicator label="Loading older messages..." overlay />
+          )}
           {loadingMessage ? (
             <div
               className="h-full flex items-center
