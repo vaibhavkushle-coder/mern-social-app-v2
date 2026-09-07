@@ -15,17 +15,8 @@ import {
 
 function Navbar() {
   const { user } = useUser();
-  const { notifications } = useNotification();
-  const { conversations } = useConversation();
-
-  const messageUnreadCount = conversations.reduce(
-    (total, conversation) => total + (conversation.unreadCount || 0),
-    0,
-  );
-
-  const unreadNotificationCount = notifications.filter(
-    (notification) => !notification.isRead,
-  ).length;
+  const { notificationUnreadCount } = useNotification();
+  const { messageUnreadCount } = useConversation();
 
   function getNavClass({ isActive }) {
     return `
@@ -113,7 +104,7 @@ function Navbar() {
           <div className="relative">
             <FiBell size={22} />
 
-            <Badge count={unreadNotificationCount} red />
+            <Badge count={notificationUnreadCount} red />
           </div>
         </NavLink>
 
@@ -199,7 +190,7 @@ function Navbar() {
           >
             <div className="relative">
               <FiBell size={21} />
-              <Badge count={unreadNotificationCount} red />
+              <Badge count={notificationUnreadCount} red />
             </div>
           </NavLink>
 

@@ -1,4 +1,11 @@
-import { createContext, useState, useEffect, useCallback, useRef } from "react";
+import {
+  createContext,
+  useState,
+  useLayoutEffect,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { getConversations } from "../services/messageService";
 import { useUser } from "../hooks/useUser";
 import { useSocket } from "../hooks/useSocket";
@@ -16,6 +23,7 @@ export function ConversationProvider({ children }) {
   const [conversationMeta, setConversationMeta] = useState(
     INITIAL_CONVERSATION_META,
   );
+  const [messageUnreadCount, setMessageUnreadCount] = useState(0);
   const [messageCache, setMessageCache] = useState({});
   const conversationsRequestRef = useRef(null);
   const currentUserIdRef = useRef(null);
@@ -60,6 +68,7 @@ export function ConversationProvider({ children }) {
             nextCursor: response.data.nextCursor,
             loadingMore: false,
           });
+          setMessageUnreadCount(response.data.totalUnreadCount || 0);
           setConversationsLoaded(true);
         }
 
@@ -129,6 +138,7 @@ export function ConversationProvider({ children }) {
           nextCursor: response.data.nextCursor,
           loadingMore: false,
         });
+        setMessageUnreadCount(response.data.totalUnreadCount || 0);
 
         return response;
       })
@@ -156,15 +166,17 @@ export function ConversationProvider({ children }) {
     return request;
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setConversations([]);
     setConversationsLoaded(false);
     setConversationMeta(INITIAL_CONVERSATION_META);
+    setMessageUnreadCount(0);
     setMessageCache({});
     conversationsRequestRef.current = null;
 
-    if (!currentUserId) return;
-
+    if (currentUserId) {
+      fetchConversations().catch(() => {});
+    }
   }, [currentUserId, fetchConversations]);
 
   useEffect(() => {
@@ -179,6 +191,7 @@ export function ConversationProvider({ children }) {
         messageId: message._id,
         clientMessageId: message.clientMessageId,
       });
+      setMessageUnreadCount((count) => count + 1);
 
       setConversations((prev) => {
         const other = message.sender;
@@ -205,6 +218,7 @@ export function ConversationProvider({ children }) {
         loadMoreConversations,
         conversationsLoaded,
         conversationMeta,
+        messageUnreadCount,
         messageCache,
         setMessageCache,
       }}

@@ -32,6 +32,57 @@ function populateMessage(messageId) {
     });
 }
 
+async function countVisibleUnreadMessages(userId) {
+  const [result] = await Message.aggregate([
+    {
+      $match: {
+        receiver: userId,
+        seen: false,
+        isDeletedForEveryone: { $ne: true },
+        deleteFor: { $not: { $elemMatch: { user: userId } } },
+      },
+    },
+    {
+      $lookup: {
+        from: Conversation.collection.name,
+        localField: "conversation",
+        foreignField: "_id",
+        as: "conversation",
+      },
+    },
+    { $unwind: "$conversation" },
+    {
+      $set: {
+        currentDeletion: {
+          $arrayElemAt: [
+            {
+              $filter: {
+                input: "$conversation.deletedFor",
+                as: "deletion",
+                cond: { $eq: ["$$deletion.user", userId] },
+              },
+            },
+            0,
+          ],
+        },
+      },
+    },
+    {
+      $match: {
+        $expr: {
+          $or: [
+            { $eq: [{ $ifNull: ["$currentDeletion", null] }, null] },
+            { $gt: ["$createdAt", "$currentDeletion.deletedAt"] },
+          ],
+        },
+      },
+    },
+    { $count: "count" },
+  ]);
+
+  return result?.count || 0;
+}
+
 async function sendMessage(req, res) {
   try {
     const { text, replyTo, post, clientMessageId } = req.body || {};
@@ -465,9 +516,11 @@ async function getConversations(req, res) {
       ? visibleEntries.slice(0, limit)
       : visibleEntries;
     const conversations = page.map((entry) => entry.summary);
+    const totalUnreadCount = await countVisibleUnreadMessages(currentUserId);
 
     res.status(200).json({
       conversations,
+      totalUnreadCount,
       hasMore,
       nextCursor: hasMore
         ? encodePaginationCursor(
