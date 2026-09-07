@@ -602,35 +602,45 @@ async function editComment(req, res) {
       return res.status(400).json({ message: "Comment is too long" });
     }
 
-    const post = await Post.findById(req.params.postId);
+    const editedPost = await Post.findOneAndUpdate(
+      {
+        _id: req.params.postId,
+        comments: {
+          $elemMatch: {
+            _id: req.params.commentId,
+            user: req.user._id,
+          },
+        },
+      },
+      { $set: { "comments.$.text": normalizedText } },
+      { new: true },
+    ).select("_id");
 
-    if (!post) {
-      return res.status(404).json({
-        message: "Post not found",
-      });
-    }
+    if (!editedPost) {
+      const post = await Post.findById(req.params.postId).select(
+        "comments._id comments.user",
+      );
 
-    const commentIndex = post.comments.findIndex(
-      (comment) => comment._id.toString() === req.params.commentId,
-    );
+      if (!post) {
+        return res.status(404).json({
+          message: "Post not found",
+        });
+      }
 
-    if (commentIndex === -1) {
-      return res.status(404).json({
-        message: "Comment not found",
-      });
-    }
+      const comment = post.comments.find(
+        (item) => item._id.toString() === req.params.commentId,
+      );
 
-    const comment = post.comments[commentIndex];
+      if (!comment) {
+        return res.status(404).json({
+          message: "Comment not found",
+        });
+      }
 
-    if (comment.user.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         message: "You can only edit your own comment",
       });
     }
-
-    post.comments[commentIndex].text = normalizedText;
-
-    await post.save();
 
     const updatedPost = await Post.findById(req.params.postId)
       .populate("user", "name profilePic")

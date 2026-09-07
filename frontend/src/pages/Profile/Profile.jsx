@@ -15,7 +15,13 @@ function Profile() {
     totalPosts: 0,
   });
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-  const { user, setUser, fetchUser } = useUser();
+  const {
+    user,
+    setUser,
+    fetchUser,
+    userInitializing,
+    userInitializationError,
+  } = useUser();
   const postsRequestRef = useRef(null);
   const requestVersionRef = useRef(0);
   const currentUserId = user?._id?.toString() || null;
@@ -62,7 +68,7 @@ function Profile() {
   }, [currentUserId]);
 
   useEffect(() => {
-    fetchUser();
+    fetchUser().catch(() => {});
   }, [fetchUser]);
 
   function handleCloseEditProfile() {
@@ -124,8 +130,23 @@ function Profile() {
     }
   }
 
-  if (!user) {
+  if (!user && userInitializing) {
     return <h1>Loading...</h1>;
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <p>{userInitializationError || "Unable to load your profile."}</p>
+        <button
+          type="button"
+          onClick={() => fetchUser().catch(() => {})}
+          className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 transition"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   return (
