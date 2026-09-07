@@ -716,6 +716,7 @@ function Chat() {
 
     const version = requestVersion.current;
     const chatId = id;
+    const currentUserId = user?._id?.toString();
     const cursor = messageMeta.nextCursor;
     olderRequestRef.current = true;
     const container = messagesContainerRef.current;
@@ -724,6 +725,21 @@ function Chat() {
       const response = await getMessages(chatId, cursor);
 
       if (version !== requestVersion.current) return;
+
+      const undeliveredIncomingMessageIds = response.data.messages
+        .filter((message) => {
+          const messageId = message._id?.toString();
+          const senderId = message.sender?._id?.toString();
+          const receiverId = message.receiver?._id?.toString();
+
+          return (
+            /^[a-f\d]{24}$/i.test(messageId) &&
+            !message.delivered &&
+            senderId === chatId?.toString() &&
+            receiverId === currentUserId
+          );
+        })
+        .map((message) => message._id);
 
       setMessages((current) => {
         if (version !== requestVersion.current) return current;
@@ -754,6 +770,16 @@ function Chat() {
         hasMore: response.data.hasMore,
         nextCursor: response.data.nextCursor,
       });
+
+      if (
+        undeliveredIncomingMessageIds.length > 0 &&
+        version === requestVersion.current
+      ) {
+        socket.emit("message-delivered", {
+          messageIds: undeliveredIncomingMessageIds,
+        });
+      }
+
       requestAnimationFrame(() => {
         if (version === requestVersion.current && container) {
           container.scrollTop = container.scrollHeight - oldHeight;
