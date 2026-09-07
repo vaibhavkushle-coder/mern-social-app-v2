@@ -75,6 +75,7 @@ export function UserProvider({ children }) {
       await fetchUser();
     } catch (error) {
       logger.error("user.edit_profile.failed", error);
+      throw error;
     }
   }
   return (
