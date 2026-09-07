@@ -47,6 +47,7 @@ function Messages() {
 
   const longPressTimer = useRef(null);
   const longPressed = useRef(false);
+  const hasSelectedInCurrentModeRef = useRef(false);
 
   function handleConversationsScroll(event) {
     const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
@@ -67,6 +68,23 @@ function Messages() {
         : [...prev, userId],
     );
   }
+
+  useEffect(() => {
+    if (!selectMode) {
+      hasSelectedInCurrentModeRef.current = false;
+      return;
+    }
+
+    if (selectedIds.length > 0) {
+      hasSelectedInCurrentModeRef.current = true;
+      return;
+    }
+
+    if (hasSelectedInCurrentModeRef.current) {
+      hasSelectedInCurrentModeRef.current = false;
+      setSelectMode(false);
+    }
+  }, [selectMode, selectedIds.length]);
 
   async function handleDeleteConversation() {
     if (selectedIds.length === 0) return;

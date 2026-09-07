@@ -121,6 +121,7 @@ function Chat() {
 
   const longPressTimer = useRef(null);
   const longPressed = useRef(false);
+  const hasSelectedInCurrentModeRef = useRef(false);
   const requestVersion = useRef(0);
   const olderRequestRef = useRef(false);
   const initialFetchVersionRef = useRef(null);
@@ -199,6 +200,23 @@ function Chat() {
     setSelectMode(true);
     setSelectedMessageIds([messageId]);
   }
+
+  useEffect(() => {
+    if (!selectMode) {
+      hasSelectedInCurrentModeRef.current = false;
+      return;
+    }
+
+    if (selectedMessageIds.length > 0) {
+      hasSelectedInCurrentModeRef.current = true;
+      return;
+    }
+
+    if (hasSelectedInCurrentModeRef.current) {
+      hasSelectedInCurrentModeRef.current = false;
+      setSelectMode(false);
+    }
+  }, [selectMode, selectedMessageIds.length]);
 
   useEffect(() => {
     const version = ++requestVersion.current;

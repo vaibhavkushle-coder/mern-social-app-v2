@@ -20,6 +20,7 @@ function Notification() {
 
   const longPressTimer = useRef(null);
   const longPressed = useRef(false);
+  const hasSelectedInCurrentModeRef = useRef(false);
   const { user } = useUser();
   const currentUserId = user?._id?.toString() || null;
 
@@ -49,6 +50,23 @@ function Notification() {
       readAllNotifications();
     }
   }, [notifications, readAllNotifications]);
+
+  useEffect(() => {
+    if (!selectMode) {
+      hasSelectedInCurrentModeRef.current = false;
+      return;
+    }
+
+    if (selectedIds.length > 0) {
+      hasSelectedInCurrentModeRef.current = true;
+      return;
+    }
+
+    if (hasSelectedInCurrentModeRef.current) {
+      hasSelectedInCurrentModeRef.current = false;
+      setSelectmode(false);
+    }
+  }, [selectMode, selectedIds.length]);
 
   function handleNotificationsScroll(event) {
     const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
