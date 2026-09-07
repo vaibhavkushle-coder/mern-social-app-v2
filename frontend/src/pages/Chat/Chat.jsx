@@ -28,6 +28,47 @@ import logger from "../../utils/logger";
 
 const EmojiPicker = lazy(() => import("emoji-picker-react"));
 
+function mergeMessages(...messageGroups) {
+  const messagesByIdentity = new Map();
+
+  messageGroups.flat().forEach((message) => {
+    if (!message) return;
+
+    const identity = message.clientMessageId
+      ? `client:${message.clientMessageId}`
+      : `message:${message._id}`;
+
+    const existing = messagesByIdentity.get(identity);
+    const existingIsTemporary = existing?._id?.toString().startsWith("temp:");
+    const messageIsTemporary = message._id?.toString().startsWith("temp:");
+
+    if (existing && !existingIsTemporary && messageIsTemporary) return;
+
+    if (existingIsTemporary && !messageIsTemporary) {
+      messagesByIdentity.set(identity, {
+        ...message,
+        delivered: existing.delivered || message.delivered,
+        seen: existing.seen || message.seen,
+      });
+      return;
+    }
+
+    messagesByIdentity.set(identity, message);
+  });
+
+  return [...messagesByIdentity.values()].sort((first, second) => {
+    const timeDifference =
+      new Date(first.createdAt).getTime() - new Date(second.createdAt).getTime();
+
+    if (timeDifference !== 0) return timeDifference;
+
+    const firstTieBreaker = first._id || first.clientMessageId || "";
+    const secondTieBreaker = second._id || second.clientMessageId || "";
+
+    return firstTieBreaker.toString().localeCompare(secondTieBreaker.toString());
+  });
+}
+
 function Chat() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -175,7 +216,7 @@ function Chat() {
 
     const cached = accountChanged ? null : messageCacheRef.current[id];
     if (cached?.messages?.length) {
-      setMessages(cached.messages);
+      setMessages(mergeMessages(cached.messages));
       setMessageMeta(cached.meta);
       setLoadingMessage(false);
     } else setMessages([]);
@@ -203,7 +244,10 @@ function Chat() {
               message.receiver?._id?.toString() === id?.toString(),
           );
 
-          const merged = [...response.data.messages, ...localMessages];
+          const merged = mergeMessages(
+            response.data.messages,
+            localMessages,
+          );
           setMessageCache((cache) => {
             if (!isCurrentVersion()) return cache;
 
@@ -317,7 +361,7 @@ function Chat() {
         return;
       }
 
-      setMessages((prev) => [...prev, message]);
+      setMessages((prev) => mergeMessages(prev, message));
 
       if (senderId === currentChatUserId) {
         const version = requestVersion.current;
@@ -548,7 +592,7 @@ function Chat() {
       });
     }
 
-    setMessages((prev) => [...prev, optimisticMessage]);
+    setMessages((prev) => mergeMessages(prev, optimisticMessage));
     updateConversation(optimisticMessage);
     setText("");
     setReplyMessage(null);
@@ -570,20 +614,22 @@ function Chat() {
       const newMessage = response.data.message;
 
       setMessages((prev) =>
-        prev.map((message) =>
-          message._id === temporaryMessageId
-            ? {
-                ...newMessage,
-                clientMessageId,
-                delivered: message.delivered || newMessage.delivered,
-                seen: message.seen || newMessage.seen,
-                localStatus: message.seen
-                  ? "seen"
-                  : message.delivered || newMessage.delivered
-                    ? "delivered"
-                    : "sent",
-              }
-            : message,
+        mergeMessages(
+          prev.map((message) =>
+            message._id === temporaryMessageId
+              ? {
+                  ...newMessage,
+                  clientMessageId,
+                  delivered: message.delivered || newMessage.delivered,
+                  seen: message.seen || newMessage.seen,
+                  localStatus: message.seen
+                    ? "seen"
+                    : message.delivered || newMessage.delivered
+                      ? "delivered"
+                      : "sent",
+                }
+              : message,
+          ),
         ),
       );
       updateConversation(newMessage);
@@ -622,11 +668,7 @@ function Chat() {
       setMessages((current) => {
         if (version !== requestVersion.current) return current;
 
-        const ids = new Set(current.map((message) => message._id));
-        const merged = [
-          ...response.data.messages.filter((message) => !ids.has(message._id)),
-          ...current,
-        ];
+        const merged = mergeMessages(response.data.messages, current);
         setMessageCache((cache) => {
           if (version !== requestVersion.current) return cache;
 
