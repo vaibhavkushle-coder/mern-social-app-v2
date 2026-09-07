@@ -16,20 +16,45 @@ async function getNotifications(req, res) {
   try {
     const limit = parsePaginationLimit(req.query.limit, 20, 50);
     const cursor = req.query.cursor;
-    const notifications = await Notification.find({
-      toUser: req.user._id,
-      ...buildPaginationFilter("createdAt", cursor),
-    })
-      .populate("fromUser", "name profilePic")
-      .populate("post", "_id")
-      .sort({ createdAt: -1, _id: -1 })
-      .limit(limit + 1);
-    const staleNotificationIds = notifications
-      .filter(
-        (notification) =>
-          notification.type !== "follow" && !notification.post,
-      )
-      .map((notification) => notification._id);
+    const validNotifications = [];
+    const staleNotificationIds = [];
+    const targetCount = limit + 1;
+    const scanBatchSize = Math.max(targetCount, 20);
+    let scanCursor = cursor;
+    let exhausted = false;
+
+    while (validNotifications.length < targetCount && !exhausted) {
+      const notifications = await Notification.find({
+        toUser: req.user._id,
+        ...buildPaginationFilter("createdAt", scanCursor),
+      })
+        .populate("fromUser", "name profilePic")
+        .populate("post", "_id")
+        .sort({ createdAt: -1, _id: -1 })
+        .limit(scanBatchSize);
+
+      for (const notification of notifications) {
+        if (notification.type === "follow" || notification.post) {
+          validNotifications.push(notification);
+        } else {
+          staleNotificationIds.push(notification._id);
+        }
+
+        if (validNotifications.length === targetCount) break;
+      }
+
+      if (
+        validNotifications.length === targetCount ||
+        notifications.length < scanBatchSize
+      ) {
+        exhausted = notifications.length < scanBatchSize;
+      } else {
+        scanCursor = encodePaginationCursor(
+          notifications[notifications.length - 1],
+          "createdAt",
+        );
+      }
+    }
 
     if (staleNotificationIds.length > 0) {
       await Notification.deleteMany({
@@ -38,12 +63,10 @@ async function getNotifications(req, res) {
       });
     }
 
-    const validNotifications = notifications.filter(
-      (notification) =>
-        notification.type === "follow" || notification.post,
-    );
-    const hasMore = notifications.length > limit;
-    const page = validNotifications.slice(0, limit);
+    const hasMore = validNotifications.length > limit;
+    const page = hasMore
+      ? validNotifications.slice(0, limit)
+      : validNotifications;
     const unreadCount = await Notification.countDocuments({
       toUser: req.user._id,
       isRead: false,
@@ -54,11 +77,8 @@ async function getNotifications(req, res) {
       unreadCount,
       hasMore,
       nextCursor:
-        hasMore && notifications.length > 0
-          ? encodePaginationCursor(
-              notifications[Math.min(limit, notifications.length) - 1],
-              "createdAt",
-            )
+        hasMore && page.length > 0
+          ? encodePaginationCursor(page[page.length - 1], "createdAt")
           : null,
     });
   } catch (error) {
