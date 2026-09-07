@@ -94,6 +94,7 @@ function Chat() {
     clearConversationUnread,
     getConversationAccountGeneration,
     isConversationAccountGenerationCurrent,
+    syncConversationAfterMessageDeletion,
     messageCache,
     setMessageCache,
   } = useConversation();
@@ -105,6 +106,8 @@ function Chat() {
 
   const typingTimer = useRef(null);
   const messagesContainerRef = useRef(null);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
   const inputRef = useRef(null);
 
   const touchStartX = useRef(null);
@@ -456,12 +459,26 @@ function Chat() {
     }
 
     function handleMessageDeletedForEveryone({ messageId }) {
-      setMessages((prev) =>
-        prev.map((message) =>
-          message._id === messageId
-            ? { ...message, isDeletedForEveryone: true }
-            : message,
-        ),
+      const deletedMessage = messagesRef.current.find(
+        (message) => message._id === messageId,
+      );
+      const remainingMessages = messagesRef.current.map((message) =>
+        message._id === messageId
+          ? { ...message, isDeletedForEveryone: true }
+          : message,
+      );
+      const removedUnreadCount =
+        deletedMessage &&
+        !deletedMessage.seen &&
+        deletedMessage.receiver?._id?.toString() === user?._id?.toString()
+          ? 1
+          : 0;
+
+      setMessages(remainingMessages);
+      syncConversationAfterMessageDeletion(
+        id,
+        remainingMessages,
+        removedUnreadCount,
       );
     }
 
@@ -497,7 +514,13 @@ function Chat() {
 
       clearTimeout(typingTimer.current);
     };
-  }, [id, user?._id, socket, clearConversationUnread]);
+  }, [
+    id,
+    user?._id,
+    socket,
+    clearConversationUnread,
+    syncConversationAfterMessageDeletion,
+  ]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -734,14 +757,34 @@ function Chat() {
   async function handleDeleteForMe() {
     if (selectedMessageIds.length === 0) return;
 
+    const accountGeneration = getConversationAccountGeneration();
+    const messageIds = [...selectedMessageIds];
+
     try {
       setDeleting(true);
-      for (const messageId of selectedMessageIds) {
+      for (const messageId of messageIds) {
         await deleteMessageForMe(messageId);
       }
 
-      setMessages((prev) =>
-        prev.filter((message) => !selectedMessageIds.includes(message._id)),
+      if (!isConversationAccountGenerationCurrent(accountGeneration)) return;
+
+      const deletedMessages = messagesRef.current.filter((message) =>
+        messageIds.includes(message._id),
+      );
+      const remainingMessages = messagesRef.current.filter(
+        (message) => !messageIds.includes(message._id),
+      );
+      const removedUnreadCount = deletedMessages.filter(
+        (message) =>
+          !message.seen &&
+          message.receiver?._id?.toString() === user?._id?.toString(),
+      ).length;
+
+      setMessages(remainingMessages);
+      syncConversationAfterMessageDeletion(
+        id,
+        remainingMessages,
+        removedUnreadCount,
       );
 
       setShowDeleteConfirm(false);
@@ -750,8 +793,9 @@ function Chat() {
     } catch (error) {
       logger.error("chat.delete_for_me.failed", error);
       showToast("Failed to delete messages", "error");
+    } finally {
+      setDeleting(false);
     }
-    setDeleting(false);
   }
 
   const canDeleteForEveryone = selectedMessageIds.every((messageId) => {
@@ -774,19 +818,25 @@ function Chat() {
   async function handleDeleteForEveryone() {
     if (selectedMessageIds.length === 0) return;
 
+    const accountGeneration = getConversationAccountGeneration();
+    const messageIds = [...selectedMessageIds];
+
     try {
       setDeleting(true);
-      for (const messageId of selectedMessageIds) {
+      for (const messageId of messageIds) {
         await deleteMessageForEveryone(messageId);
       }
 
-      setMessages((prev) =>
-        prev.map((message) =>
-          selectedMessageIds.includes(message._id)
-            ? { ...message, isDeletedForEveryone: true }
-            : message,
-        ),
+      if (!isConversationAccountGenerationCurrent(accountGeneration)) return;
+
+      const remainingMessages = messagesRef.current.map((message) =>
+        messageIds.includes(message._id)
+          ? { ...message, isDeletedForEveryone: true }
+          : message,
       );
+
+      setMessages(remainingMessages);
+      syncConversationAfterMessageDeletion(id, remainingMessages);
 
       setShowDeleteConfirm(false);
       setSelectMode(false);

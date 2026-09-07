@@ -219,6 +219,93 @@ export function ConversationProvider({ children }) {
     [],
   );
 
+  const syncConversationAfterMessageDeletion = useCallback(
+    (otherUserId, remainingMessages, removedUnreadCount = 0) => {
+      const targetUserId = otherUserId?.toString();
+
+      if (!targetUserId) return;
+
+      const latestVisibleMessage = [...remainingMessages]
+        .filter((message) => !message.isDeletedForEveryone)
+        .sort(
+          (first, second) =>
+            new Date(second.createdAt).getTime() -
+            new Date(first.createdAt).getTime(),
+        )[0];
+
+      setConversations((prev) => {
+        const targetConversation = prev.find(
+          (conversation) =>
+            conversation.user?._id?.toString() === targetUserId,
+        );
+
+        if (!targetConversation) return prev;
+
+        if (!latestVisibleMessage) {
+          return prev.filter(
+            (conversation) =>
+              conversation.user?._id?.toString() !== targetUserId,
+          );
+        }
+
+        return prev
+          .map((conversation) =>
+            conversation.user?._id?.toString() === targetUserId
+              ? {
+                  ...conversation,
+                  lastMessage: latestVisibleMessage.text,
+                  lastMessageTime: latestVisibleMessage.createdAt,
+                  lastMessageId: latestVisibleMessage._id,
+                  unreadCount: Math.max(
+                    0,
+                    (conversation.unreadCount || 0) - removedUnreadCount,
+                  ),
+                }
+              : conversation,
+          )
+          .sort(
+            (first, second) =>
+              new Date(second.lastMessageTime).getTime() -
+              new Date(first.lastMessageTime).getTime(),
+          );
+      });
+
+      if (removedUnreadCount > 0) {
+        setMessageUnreadCount((count) =>
+          Math.max(0, count - removedUnreadCount),
+        );
+      }
+    },
+    [],
+  );
+
+  const removeConversationsFromState = useCallback(
+    (otherUserIds, removedUnreadCount = 0) => {
+      const targetUserIds = new Set(
+        (Array.isArray(otherUserIds) ? otherUserIds : [otherUserIds])
+          .filter(Boolean)
+          .map((userId) => userId.toString()),
+      );
+
+      if (targetUserIds.size === 0) return;
+
+      setConversations((prev) =>
+        prev.filter(
+          (conversation) =>
+            !targetUserIds.has(conversation.user?._id?.toString()),
+        ),
+      );
+      clearConversationMessageCache([...targetUserIds]);
+
+      if (removedUnreadCount > 0) {
+        setMessageUnreadCount((count) =>
+          Math.max(0, count - removedUnreadCount),
+        );
+      }
+    },
+    [clearConversationMessageCache],
+  );
+
   useLayoutEffect(() => {
     setConversations([]);
     setConversationsLoaded(false);
@@ -276,6 +363,8 @@ export function ConversationProvider({ children }) {
         clearConversationMessageCache,
         getConversationAccountGeneration,
         isConversationAccountGenerationCurrent,
+        syncConversationAfterMessageDeletion,
+        removeConversationsFromState,
         messageCache,
         setMessageCache,
       }}

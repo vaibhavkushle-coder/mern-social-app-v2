@@ -22,12 +22,13 @@ function Messages() {
 
   const {
     conversations,
-    setConversations,
     fetchConversations,
     loadMoreConversations,
     conversationsLoaded,
     conversationMeta,
-    clearConversationMessageCache,
+    getConversationAccountGeneration,
+    isConversationAccountGenerationCurrent,
+    removeConversationsFromState,
   } = useConversation();
   const { user } = useUser();
 
@@ -70,18 +71,22 @@ function Messages() {
   async function handleDeleteConversation() {
     if (selectedIds.length === 0) return;
 
+    const accountGeneration = getConversationAccountGeneration();
+    const removedUnreadCount = conversations
+      .filter((conversation) => selectedIds.includes(conversation.user._id))
+      .reduce(
+        (count, conversation) => count + (conversation.unreadCount || 0),
+        0,
+      );
+
     try {
       for (const userId of selectedIds) {
         await deleteConversation(userId);
       }
 
-      clearConversationMessageCache(selectedIds);
+      if (!isConversationAccountGenerationCurrent(accountGeneration)) return;
 
-      setConversations((prev) =>
-        prev.filter(
-          (conversation) => !selectedIds.includes(conversation.user._id),
-        ),
-      );
+      removeConversationsFromState(selectedIds, removedUnreadCount);
 
       setSelectedIds([]);
       setSelectMode(false);

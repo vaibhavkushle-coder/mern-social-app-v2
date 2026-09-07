@@ -5,6 +5,7 @@ const User = require("../models/User");
 const mongoose = require("mongoose");
 const { getCanonicalConversationPair } = require("../utils/conversationPair");
 const { lockPostForReference } = require("../utils/postReference");
+const { buildVisibleMessageFilter } = require("../utils/messageVisibility");
 const {
   InvalidPaginationCursorError,
   buildPaginationFilter,
@@ -399,9 +400,22 @@ async function markMessagesAsSeen(req, res) {
   try {
     const otherUserId = req.params.id;
     const currentUserId = req.user._id;
+    const pair = getCanonicalConversationPair(currentUserId, otherUserId);
+    const conversation = await Conversation.findOne({
+      participantA: pair.participantA,
+      participantB: pair.participantB,
+    }).select("_id deletedFor");
+
+    if (!conversation) {
+      return res.status(200).json({
+        message: "Messages marked as seen",
+        updatedCount: 0,
+      });
+    }
 
     const result = await Message.updateMany(
       {
+        ...buildVisibleMessageFilter(conversation, currentUserId),
         sender: otherUserId,
         receiver: currentUserId,
         seen: false,

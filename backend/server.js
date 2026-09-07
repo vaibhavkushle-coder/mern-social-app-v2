@@ -13,8 +13,11 @@ const {
 } = require("./socket");
 const User = require("./models/User");
 const Message = require("./models/Message");
+const Conversation = require("./models/Conversation");
 const RevokedToken = require("./models/RevokedToken");
 const { isValidObjectId } = require("./utils/validation");
+const { getCanonicalConversationPair } = require("./utils/conversationPair");
+const { buildVisibleMessageFilter } = require("./utils/messageVisibility");
 const { hashToken, getTokenSocketRoom } = require("./utils/tokenUtils");
 const logger = require("./utils/logger");
 
@@ -187,13 +190,28 @@ io.on("connection", async (socket) => {
 
       if (!allowMessageSeen()) return;
 
+      const pair = getCanonicalConversationPair(socket.userId, senderId);
+      const conversation = await Conversation.findOne({
+        participantA: pair.participantA,
+        participantB: pair.participantB,
+      }).select("_id deletedFor");
+
+      if (!conversation) return;
+
+      const visibleMessageFilter = buildVisibleMessageFilter(
+        conversation,
+        socket.userId,
+      );
+
       const [seenMessageExists, unseenMessageExists] = await Promise.all([
         Message.exists({
+          ...visibleMessageFilter,
           sender: senderId,
           receiver: socket.userId,
           seen: true,
         }),
         Message.exists({
+          ...visibleMessageFilter,
           sender: senderId,
           receiver: socket.userId,
           seen: false,
