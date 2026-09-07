@@ -48,7 +48,12 @@ function Chat() {
 
   const { id } = useParams();
 
-  const { setConversations, messageCache, setMessageCache } = useConversation();
+  const {
+    setConversations,
+    clearConversationUnread,
+    messageCache,
+    setMessageCache,
+  } = useConversation();
 
   const { user } = useUser();
   const { showToast } = useToast();
@@ -271,10 +276,11 @@ function Chat() {
         });
       }
 
-      await markMessageAsSeen(id);
+      const seenResponse = await markMessageAsSeen(id);
 
       if (!isCurrentVersion()) return;
 
+      clearConversationUnread(id, seenResponse.data.updatedCount);
       socket.emit("message-seen", {
         senderId: id,
       });
@@ -288,7 +294,13 @@ function Chat() {
         requestVersion.current += 1;
       }
     };
-  }, [id, user?._id, socket, setMessageCache]);
+  }, [
+    id,
+    user?._id,
+    socket,
+    setMessageCache,
+    clearConversationUnread,
+  ]);
 
   useEffect(() => {
     async function handleReceiveMessage(message) {
@@ -308,8 +320,15 @@ function Chat() {
       setMessages((prev) => [...prev, message]);
 
       if (senderId === currentChatUserId) {
-        await markMessageAsSeen(currentChatUserId);
+        const version = requestVersion.current;
+        const seenResponse = await markMessageAsSeen(currentChatUserId);
 
+        if (requestVersion.current !== version) return;
+
+        clearConversationUnread(
+          currentChatUserId,
+          seenResponse.data.updatedCount,
+        );
         socket.emit("message-seen", {
           senderId: currentChatUserId,
         });
@@ -417,7 +436,7 @@ function Chat() {
 
       clearTimeout(typingTimer.current);
     };
-  }, [id, user?._id, socket]);
+  }, [id, user?._id, socket, clearConversationUnread]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;

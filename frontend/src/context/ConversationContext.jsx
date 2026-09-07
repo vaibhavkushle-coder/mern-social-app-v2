@@ -166,6 +166,24 @@ export function ConversationProvider({ children }) {
     return request;
   }, []);
 
+  const clearConversationUnread = useCallback((otherUserId, clearedCount) => {
+    const targetUserId = otherUserId?.toString();
+
+    if (!targetUserId) return;
+
+    setConversations((prev) =>
+      prev.map((conversation) =>
+        conversation.user?._id?.toString() === targetUserId
+          ? { ...conversation, unreadCount: 0 }
+          : conversation,
+      ),
+    );
+
+    if (Number.isInteger(clearedCount) && clearedCount > 0) {
+      setMessageUnreadCount((count) => Math.max(0, count - clearedCount));
+    }
+  }, []);
+
   useLayoutEffect(() => {
     setConversations([]);
     setConversationsLoaded(false);
@@ -219,6 +237,7 @@ export function ConversationProvider({ children }) {
         conversationsLoaded,
         conversationMeta,
         messageUnreadCount,
+        clearConversationUnread,
         messageCache,
         setMessageCache,
       }}

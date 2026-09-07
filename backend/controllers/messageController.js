@@ -415,6 +415,7 @@ async function markMessagesAsSeen(req, res) {
 
     res.status(200).json({
       message: "Messages marked as seen",
+      updatedCount: result.modifiedCount,
     });
   } catch (error) {
     logger.error("message.seen.failed", error);
