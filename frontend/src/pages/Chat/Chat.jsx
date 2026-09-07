@@ -92,6 +92,8 @@ function Chat() {
   const {
     setConversations,
     clearConversationUnread,
+    getConversationAccountGeneration,
+    isConversationAccountGenerationCurrent,
     messageCache,
     setMessageCache,
   } = useConversation();
@@ -552,6 +554,7 @@ function Chat() {
 
     const clientMessageId = crypto.randomUUID();
     const temporaryMessageId = `temp:${clientMessageId}`;
+    const accountGeneration = getConversationAccountGeneration();
     const createdAt = new Date().toISOString();
     const messageText = text.trim();
     const replyTo = replyMessage?._id || null;
@@ -628,6 +631,8 @@ function Chat() {
 
       const newMessage = response.data.message;
 
+      if (!isConversationAccountGenerationCurrent(accountGeneration)) return;
+
       setMessages((prev) =>
         mergeMessages(
           prev.map((message) =>
@@ -649,6 +654,8 @@ function Chat() {
       );
       updateConversation(newMessage);
     } catch (error) {
+      if (!isConversationAccountGenerationCurrent(accountGeneration)) return;
+
       logger.error("chat.message_send.failed", error);
       setMessages((prev) =>
         prev.map((message) =>

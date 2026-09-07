@@ -204,6 +204,21 @@ export function ConversationProvider({ children }) {
     });
   }, []);
 
+  const getConversationAccountGeneration = useCallback(
+    () => ({
+      userId: currentUserIdRef.current,
+      version: requestVersionRef.current,
+    }),
+    [],
+  );
+
+  const isConversationAccountGenerationCurrent = useCallback(
+    ({ userId, version }) =>
+      currentUserIdRef.current === userId &&
+      requestVersionRef.current === version,
+    [],
+  );
+
   useLayoutEffect(() => {
     setConversations([]);
     setConversationsLoaded(false);
@@ -259,6 +274,8 @@ export function ConversationProvider({ children }) {
         messageUnreadCount,
         clearConversationUnread,
         clearConversationMessageCache,
+        getConversationAccountGeneration,
+        isConversationAccountGenerationCurrent,
         messageCache,
         setMessageCache,
       }}
