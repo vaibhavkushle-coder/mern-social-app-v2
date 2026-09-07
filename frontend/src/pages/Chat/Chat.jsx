@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import {
   sendMessage,
   getMessages,
@@ -88,6 +88,7 @@ function Chat() {
   const [swipeX, setSwipeX] = useState(0);
 
   const { id } = useParams();
+  const location = useLocation();
 
   const {
     setConversations,
@@ -811,6 +812,11 @@ function Chat() {
   }
 
   function handleBack() {
+    if (location.key === "default") {
+      navigate("/messages", { replace: true });
+      return;
+    }
+
     navigate(-1);
   }
 
