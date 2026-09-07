@@ -17,7 +17,10 @@ const Conversation = require("./models/Conversation");
 const RevokedToken = require("./models/RevokedToken");
 const { isValidObjectId } = require("./utils/validation");
 const { getCanonicalConversationPair } = require("./utils/conversationPair");
-const { buildVisibleMessageFilter } = require("./utils/messageVisibility");
+const {
+  buildVisibleMessageFilter,
+  countVisibleUnreadMessages,
+} = require("./utils/messageVisibility");
 const { hashToken, getTokenSocketRoom } = require("./utils/tokenUtils");
 const logger = require("./utils/logger");
 
@@ -225,6 +228,20 @@ io.on("connection", async (socket) => {
       if (senderSocketIds.length > 0) {
         io.to(senderSocketIds).emit("message-seen", {
           receiverId: socket.userId,
+        });
+      }
+
+      const receiverSocketIds = getUserSocketIds(socket.userId).filter(
+        (socketId) => socketId !== socket.id,
+      );
+
+      if (receiverSocketIds.length > 0) {
+        const totalUnreadCount = await countVisibleUnreadMessages(socket.userId);
+
+        io.to(receiverSocketIds).emit("conversation-read-sync", {
+          receiverId: socket.userId,
+          senderId,
+          totalUnreadCount,
         });
       }
     } catch (error) {

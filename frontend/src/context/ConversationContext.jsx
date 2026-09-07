@@ -342,12 +342,32 @@ export function ConversationProvider({ children }) {
       });
     }
 
+    function handleConversationReadSync({
+      receiverId,
+      senderId,
+      totalUnreadCount,
+    }) {
+      if (
+        receiverId?.toString() !== currentUserId ||
+        !senderId ||
+        !Number.isInteger(totalUnreadCount) ||
+        totalUnreadCount < 0
+      ) {
+        return;
+      }
+
+      clearConversationUnread(senderId, 0);
+      setMessageUnreadCount(totalUnreadCount);
+    }
+
     socket.on("receive-message", handleReceiveMessage);
+    socket.on("conversation-read-sync", handleConversationReadSync);
 
     return () => {
       socket.off("receive-message", handleReceiveMessage);
+      socket.off("conversation-read-sync", handleConversationReadSync);
     };
-  }, [socket, currentUserId, fetchConversations]);
+  }, [socket, currentUserId, fetchConversations, clearConversationUnread]);
 
   return (
     <ConversationContext.Provider

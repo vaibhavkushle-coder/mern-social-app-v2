@@ -5,7 +5,10 @@ const User = require("../models/User");
 const mongoose = require("mongoose");
 const { getCanonicalConversationPair } = require("../utils/conversationPair");
 const { lockPostForReference } = require("../utils/postReference");
-const { buildVisibleMessageFilter } = require("../utils/messageVisibility");
+const {
+  buildVisibleMessageFilter,
+  countVisibleUnreadMessages,
+} = require("../utils/messageVisibility");
 const {
   InvalidPaginationCursorError,
   buildPaginationFilter,
@@ -31,57 +34,6 @@ function populateMessage(messageId) {
         select: "name profilePic",
       },
     });
-}
-
-async function countVisibleUnreadMessages(userId) {
-  const [result] = await Message.aggregate([
-    {
-      $match: {
-        receiver: userId,
-        seen: false,
-        isDeletedForEveryone: { $ne: true },
-        deleteFor: { $not: { $elemMatch: { user: userId } } },
-      },
-    },
-    {
-      $lookup: {
-        from: Conversation.collection.name,
-        localField: "conversation",
-        foreignField: "_id",
-        as: "conversation",
-      },
-    },
-    { $unwind: "$conversation" },
-    {
-      $set: {
-        currentDeletion: {
-          $arrayElemAt: [
-            {
-              $filter: {
-                input: "$conversation.deletedFor",
-                as: "deletion",
-                cond: { $eq: ["$$deletion.user", userId] },
-              },
-            },
-            0,
-          ],
-        },
-      },
-    },
-    {
-      $match: {
-        $expr: {
-          $or: [
-            { $eq: [{ $ifNull: ["$currentDeletion", null] }, null] },
-            { $gt: ["$createdAt", "$currentDeletion.deletedAt"] },
-          ],
-        },
-      },
-    },
-    { $count: "count" },
-  ]);
-
-  return result?.count || 0;
 }
 
 async function sendMessage(req, res) {
