@@ -587,7 +587,6 @@ function ProfileContent({
             -ml-3
             leading-relaxed
             break-all
-            
           "
         >
           {user?.bio || "Welcome to my profile"}
