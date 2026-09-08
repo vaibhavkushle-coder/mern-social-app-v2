@@ -520,10 +520,20 @@ async function deleteConversation(req, res) {
     const pair = getCanonicalConversationPair(currentUserId, otherUserId);
     const deletedAt = new Date();
     const deletionMarkerId = new mongoose.Types.ObjectId();
-    const conversation = await Conversation.findOneAndUpdate(
+    const result = await Conversation.updateMany(
       {
-        participantA: pair.participantA,
-        participantB: pair.participantB,
+        $or: [
+          {
+            participantA: pair.participantA,
+            participantB: pair.participantB,
+          },
+          {
+            participants: {
+              $all: pair.participants,
+              $size: 2,
+            },
+          },
+        ],
       },
       [
         {
@@ -567,10 +577,10 @@ async function deleteConversation(req, res) {
           },
         },
       ],
-      { new: true },
+      { updatePipeline: true },
     );
 
-    if (!conversation) {
+    if (result.matchedCount === 0) {
       return res.status(404).json({
         message: "Conversation not found",
       });

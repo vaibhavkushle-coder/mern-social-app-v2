@@ -13,6 +13,7 @@ import getTimeAgo from "../../utils/getTimeAgo";
 import { useConversation } from "../../hooks/useConversation";
 import { useUser } from "../../hooks/useUser";
 import LoadingMoreIndicator from "../../components/LoadingMoreIndicator/LoadingMoreIndicator";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
 function Messages() {
   const [search, setSearch] = useState("");
@@ -21,6 +22,7 @@ function Messages() {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingConversations, setDeletingConversations] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const {
     conversations,
@@ -40,6 +42,7 @@ function Messages() {
     setSelectedIds([]);
     setShowMenu(false);
     setShowDeleteConfirm(false);
+    setDeleteError("");
   }, [user?._id]);
 
   useEffect(() => { if (!conversationsLoaded) fetchConversations().catch(() => {}); }, [conversationsLoaded, fetchConversations]);
@@ -89,7 +92,7 @@ function Messages() {
   }, [selectMode, selectedIds.length]);
 
   async function handleDeleteConversation() {
-    if (selectedIds.length === 0 || deletingConversations) return;
+    if (selectedIds.length === 0 || deletingConversations) return false;
 
     const accountGeneration = getConversationAccountGeneration();
     const removedUnreadCount = conversations
@@ -101,18 +104,26 @@ function Messages() {
 
     try {
       setDeletingConversations(true);
+      setDeleteError("");
       for (const userId of selectedIds) {
         await deleteConversation(userId);
       }
 
-      if (!isConversationAccountGenerationCurrent(accountGeneration)) return;
+      if (!isConversationAccountGenerationCurrent(accountGeneration)) {
+        return false;
+      }
 
       removeConversationsFromState(selectedIds, removedUnreadCount);
 
       setSelectedIds([]);
       setSelectMode(false);
+      return true;
     } catch (error) {
       logger.error("conversation.delete.failed", error);
+      setDeleteError(
+        getApiErrorMessage(error, "Failed to delete conversation"),
+      );
+      return false;
     } finally {
       setDeletingConversations(false);
     }
@@ -187,7 +198,10 @@ function Messages() {
               <div className="flex items-center gap-3">
                 {selectedIds.length > 0 && (
                   <button
-                    onClick={() => setShowDeleteConfirm(true)}
+                    onClick={() => {
+                      setDeleteError("");
+                      setShowDeleteConfirm(true);
+                    }}
                     className="px-4 py-2 text-sm font-semibold
                   bg-red-500/15
                   text-red-400
@@ -616,12 +630,21 @@ function Messages() {
                 This conversation will be removed from your index.
               </p>
 
+              {deleteError && (
+                <p className="mt-3 text-sm text-red-400" role="alert">
+                  {deleteError}
+                </p>
+              )}
+
               <div
                 className="flex justify-end gap-3
               mt-6"
               >
                 <button
-                  onClick={() => setShowDeleteConfirm(false)}
+                  onClick={() => {
+                    setDeleteError("");
+                    setShowDeleteConfirm(false);
+                  }}
                   disabled={deletingConversations}
                   className="px-4 py-2
                 rounded-xl
@@ -636,8 +659,10 @@ function Messages() {
 
                 <button
                   onClick={async () => {
-                    await handleDeleteConversation();
-                    setShowDeleteConfirm(false);
+                    const deleted = await handleDeleteConversation();
+                    if (deleted) {
+                      setShowDeleteConfirm(false);
+                    }
                   }}
                   disabled={deletingConversations}
                   className="px-4 py-2
