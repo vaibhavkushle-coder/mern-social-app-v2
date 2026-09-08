@@ -132,7 +132,27 @@ function Profile() {
   }
 
   if (!user && userInitializing) {
-    return <h1>Loading...</h1>;
+    return (
+      <>
+        <div
+          className="h-screen bg-[#0b0b1f] overflow-y-auto bg-black"
+          style={{
+            scrollbarWidth: "thin",
+            scrollbarColor: "rgba(139, 92, 246, 0.5) transparent",
+          }}
+        >
+          <Navbar />
+
+          <div className="flex flex-col items-center justify-center mt-50 gap-4">
+            <div className="w-9 h-9 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
+
+            <p className="text-sm font-medium text-gray-400 animate-pulse">
+              Loading profile...
+            </p>
+          </div>
+        </div>
+      </>
+    );
   }
 
   if (!user) {
