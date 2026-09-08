@@ -1211,6 +1211,17 @@ z-50 overflow-hidden"
 
         <div
           ref={messagesContainerRef}
+          onPointerDownCapture={(event) => {
+            if (
+              event.pointerType === "touch" &&
+              document.activeElement === inputRef.current &&
+              !event.target.closest(
+                "button, a, input, textarea, select, [role='button']",
+              )
+            ) {
+              event.preventDefault();
+            }
+          }}
           onScroll={(event) => {
             const container = event.currentTarget;
             isNearBottomRef.current =
@@ -1221,7 +1232,7 @@ z-50 overflow-hidden"
             if (container.scrollTop < 80)
               loadOlderMessages().catch((error) => logger.error("chat.older_messages.failed", error));
           }}
-          className={`flex-1 overflow-y-auto px-5 py-5
+          className={`flex-1 overflow-y-auto touch-pan-y px-5 py-5
          space-y-2 scroll-smooth  scrollbar-thin
        bg-[linear-gradient(rgba(5,7,15,0.45),rgba(5,7,15,0.45)),url('/images/chat-bg.png.jpeg')]
         bg-cover bg-center  ${editingMessage ? "blur-sm pointer-events-none" : ""}`}
