@@ -108,7 +108,7 @@ io.use(async (socket, next) => {
     socket.tokenHash = tokenHash;
     socket.tokenId = decoded.jti || null;
     next();
-  } catch (error) {
+  } catch {
     next(new Error("Unauthorized"));
   }
 });

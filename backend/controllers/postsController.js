@@ -1,7 +1,5 @@
 const uploadToCloudinary = require("../utils/cloudinaryUpload");
 const { deleteCloudinaryAsset } = uploadToCloudinary;
-const cloudinary = require("../config/cloudinary");
-const streamifier = require("streamifier");
 const Post = require("../models/Post");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
