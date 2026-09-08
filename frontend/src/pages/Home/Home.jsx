@@ -17,6 +17,7 @@ import SuggestedUsers from "../../components/SuggestedUsers/SuggestedUsers";
 import { getPostById } from "../../services/postService";
 import logger from "../../utils/logger";
 import LoadingMoreIndicator from "../../components/LoadingMoreIndicator/LoadingMoreIndicator";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
 function Home() {
   const [error, setError] = useState("");
@@ -125,7 +126,7 @@ function Home() {
       );
     } catch (error) {
       logger.error("post.like.failed", error);
-      showToast("Failed to like post", "error");
+      showToast(getApiErrorMessage(error, "Failed to like post"), "error");
     } finally {
       setLikeLoading((prev) => ({
         ...prev,
@@ -157,7 +158,7 @@ function Home() {
       );
     } catch (error) {
       logger.error("post.unlike.failed", error);
-      showToast("Failed to unlike post", "error");
+      showToast(getApiErrorMessage(error, "Failed to unlike post"), "error");
     } finally {
       setLikeLoading((prev) => ({
         ...prev,
@@ -184,7 +185,7 @@ function Home() {
       showToast("Comment added successfully 💬", "success");
     } catch (error) {
       logger.error("post.comment.failed", error);
-      showToast("Failed to add comment 💬", "error");
+      showToast(getApiErrorMessage(error, "Failed to add comment 💬"), "error");
     }
   }
 
@@ -203,7 +204,7 @@ function Home() {
       showToast("Post deleted successfully 🗑️", "success");
     } catch (error) {
       logger.error("post.delete.failed", error);
-      showToast("Failed to delete post 🗑️", "error");
+      showToast(getApiErrorMessage(error, "Failed to delete post 🗑️"), "error");
     }
   }
 
@@ -234,7 +235,7 @@ function Home() {
       showToast("Comment deleted successfully 🗑️", "success");
     } catch (error) {
       logger.error("comment.delete.failed", error);
-      showToast("Failed to delete comment 🗑️", "error");
+      showToast(getApiErrorMessage(error, "Failed to delete comment 🗑️"), "error");
     }
   }
 
@@ -256,7 +257,7 @@ function Home() {
       showToast("Comment updated successfully ✏️", "success");
     } catch (error) {
       logger.error("comment.edit.failed", error);
-      showToast("Failed to update comment ✏️", "error");
+      showToast(getApiErrorMessage(error, "Failed to update comment ✏️"), "error");
     }
   }
 
@@ -277,7 +278,7 @@ function Home() {
       showToast("Post updated successfully ✏️", "success");
     } catch (error) {
       logger.error("post.edit.failed", error);
-      showToast("Failed to update post ✏️", "error");
+      showToast(getApiErrorMessage(error, "Failed to update post ✏️"), "error");
     }
   }
 

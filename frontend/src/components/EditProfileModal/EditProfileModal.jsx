@@ -2,6 +2,16 @@ import { useUser } from "../../hooks/useUser";
 import { useState } from "react";
 import Button from "../Button/Button";
 import { useToast } from "../../hooks/useToast";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const SUPPORTED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+]);
 
 function EditProfileModal({ user, onClose }) {
   const { editProfile } = useUser();
@@ -11,6 +21,7 @@ function EditProfileModal({ user, onClose }) {
   const [bio, setBio] = useState(user?.bio || "");
   const [profilePic, setProfilePic] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   async function handleSubmit() {
     if (saving) return;
@@ -35,7 +46,10 @@ function EditProfileModal({ user, onClose }) {
     } catch (error) {
       logger.error("user.edit_profile.failed", error);
 
-      showToast("Failed to update profile 🎉", "error");
+      showToast(
+        getApiErrorMessage(error, "Failed to update profile"),
+        "error",
+      );
     } finally {
       setSaving(false);
     }
@@ -157,13 +171,24 @@ function EditProfileModal({ user, onClose }) {
             <input
               id="profilePic"
               type="file"
-              accept="image/*"
+              accept=".jpg,.jpeg,.png,.webp,.gif,.avif,image/jpeg,image/png,image/webp,image/gif,image/avif"
               className="hidden"
               disabled={saving}
               onChange={(e) => {
                 const file = e.target.files?.[0];
+                setUploadError("");
 
                 if (file) {
+                  if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
+                    setUploadError("Choose a JPEG, PNG, WebP, GIF, or AVIF image.");
+                    e.target.value = "";
+                    return;
+                  }
+                  if (file.size > MAX_IMAGE_SIZE) {
+                    setUploadError("Image must be 5 MB or smaller.");
+                    e.target.value = "";
+                    return;
+                  }
                   setProfilePic(file);
                 }
               }}
@@ -189,9 +214,16 @@ function EditProfileModal({ user, onClose }) {
                   {profilePic ? "Change Image" : "Upload Image"}
                 </p>
 
-                <p className="text-xs text-gray-500">PNG, JPG, JPEG</p>
+                <p className="text-xs text-gray-500">
+                  JPEG, PNG, WebP, GIF or AVIF · Max 5 MB
+                </p>
               </div>
             </label>
+            {uploadError && (
+              <p className="mt-2 text-xs text-red-400" role="alert">
+                {uploadError}
+              </p>
+            )}
           </div>
         </div>
 
@@ -204,7 +236,7 @@ function EditProfileModal({ user, onClose }) {
           <Button
             onClick={handleSubmit}
             loading={saving}
-            loadingText="Saving..."
+            loadingText={profilePic ? "Uploading..." : "Saving..."}
             disabled={saving || !name.trim()}
           >
             {saving ? "Saving..." : "Save Changes"}

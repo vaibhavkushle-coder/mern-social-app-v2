@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { login } from "../../services/authService";
 import { Link, useNavigate } from "react-router-dom";
 import { useUser } from "../../hooks/useUser";
@@ -11,20 +11,33 @@ import PageHeader from "../../components/PageHeader/PageHeader";
 
 import { useToast } from "../../hooks/useToast";
 import { getUserProfile } from "../../services/userService";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import useAuthRateLimit from "../../hooks/useAuthRateLimit";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [rateLimitError, setRateLimitError] = useState("");
+  const { status: attemptStatus, refresh: refreshAttempts, syncFromError } =
+    useAuthRateLimit("login");
 
   const { setUser } = useUser();
   const { showToast } = useToast();
 
   const navigate = useNavigate();
+  const limitActive =
+    attemptStatus?.remaining === 0 &&
+    (!attemptStatus.resetAt || new Date(attemptStatus.resetAt).getTime() > Date.now());
+
+  useEffect(() => {
+    if (attemptStatus?.remaining > 0) setRateLimitError("");
+  }, [attemptStatus?.remaining]);
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (submitting) return;
+    setRateLimitError("");
 
     // Validation
     if (!email && !password) {
@@ -68,11 +81,17 @@ function Login() {
 
       logger.error("auth.login.failed", error);
 
-      showToast(
-        error?.response?.data?.message ||
-          "Login failed. Please check your details.",
-        "error",
+      const errorMessage = getApiErrorMessage(
+        error,
+        "Login failed. Please check your details.",
       );
+      if (error?.response?.status === 429) {
+        syncFromError(error);
+        setRateLimitError(errorMessage);
+      } else {
+        showToast(errorMessage, "error");
+      }
+      await refreshAttempts();
     } finally {
       setSubmitting(false);
     }
@@ -166,10 +185,27 @@ function Login() {
               type="submit"
               loading={submitting}
               loadingText="Logging in..."
-              disabled={submitting}
+              disabled={submitting || limitActive}
             >
               {submitting ? "Logging in..." : "Login"}
             </Button>
+            {rateLimitError && (
+              <p className="mt-2 text-center text-xs leading-5 text-amber-300" role="alert">
+                {rateLimitError}
+              </p>
+            )}
+            {limitActive && !rateLimitError && (
+              <p className="mt-2 text-center text-xs leading-5 text-amber-300" role="alert">
+                Attempt limit reached.
+                {attemptStatus.resetAt &&
+                  ` Try again after ${new Date(attemptStatus.resetAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`}
+              </p>
+            )}
+            {attemptStatus && (
+              <p className="mt-2 text-center text-xs text-purple-200/60">
+                {attemptStatus.remaining} attempts remaining
+              </p>
+            )}
           </div>
 
           {/* Register */}

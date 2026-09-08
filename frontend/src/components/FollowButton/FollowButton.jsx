@@ -3,6 +3,7 @@ import { followUser, unfollowUser } from "../../services/userService";
 import { useToast } from "../../hooks/useToast";
 import { useHome } from "../../hooks/useHome";
 import { useState } from "react";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
 function FollowButton({ profileUser }) {
   const [loading, setLoading] = useState(false);
@@ -49,7 +50,7 @@ function FollowButton({ profileUser }) {
       logger.error("user.follow_toggle.failed", error);
 
       showToast(
-        error.response?.data?.message || "Something went wrong",
+        getApiErrorMessage(error, "Something went wrong"),
         "error",
       );
     } finally {

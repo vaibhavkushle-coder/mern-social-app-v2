@@ -12,4 +12,8 @@ async function logout(){
     return await api.post("/auth/logout");
 }
 
-export { login, register, logout }
+async function getAuthRateLimitStatus(action) {
+    return await api.get(`/auth/rate-limit/${action}`);
+}
+
+export { login, register, logout, getAuthRateLimitStatus }

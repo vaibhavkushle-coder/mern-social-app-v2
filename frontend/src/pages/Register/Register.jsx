@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { register } from "../../services/authService";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Mail, UserPlus } from "lucide-react";
@@ -10,21 +10,34 @@ import PasswordInput from "../../components/PasswordInput/PasswordInput";
 import PageHeader from "../../components/PageHeader/PageHeader";
 
 import { useToast } from "../../hooks/useToast";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import useAuthRateLimit from "../../hooks/useAuthRateLimit";
 
 function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [rateLimitError, setRateLimitError] = useState("");
+  const { status: attemptStatus, refresh: refreshAttempts, syncFromError } =
+    useAuthRateLimit("register");
 
   const navigate = useNavigate();
 
   const { setUser } = useUser();
   const { showToast } = useToast();
+  const limitActive =
+    attemptStatus?.remaining === 0 &&
+    (!attemptStatus.resetAt || new Date(attemptStatus.resetAt).getTime() > Date.now());
+
+  useEffect(() => {
+    if (attemptStatus?.remaining > 0) setRateLimitError("");
+  }, [attemptStatus?.remaining]);
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (submitting) return;
+    setRateLimitError("");
 
     // Validation
     if (!name && !email && !password) {
@@ -65,11 +78,17 @@ function Register() {
     } catch (error) {
       logger.error("auth.register.failed", error);
 
-      showToast(
-        error?.response?.data?.message ||
-          "Registration failed. Please try again.",
-        "error",
+      const errorMessage = getApiErrorMessage(
+        error,
+        "Registration failed. Please try again.",
       );
+      if (error?.response?.status === 429) {
+        syncFromError(error);
+        setRateLimitError(errorMessage);
+      } else {
+        showToast(errorMessage, "error");
+      }
+      await refreshAttempts();
     } finally {
       setSubmitting(false);
     }
@@ -176,11 +195,28 @@ function Register() {
               type="submit"
               loading={submitting}
               loadingText="Creating account..."
-              disabled={submitting}
+              disabled={submitting || limitActive}
             >
               {!submitting && <UserPlus size={18} />}
               <span>{submitting ? "Creating account..." : "Register"}</span>
             </Button>
+            {rateLimitError && (
+              <p className="mt-2 text-center text-xs leading-5 text-amber-300" role="alert">
+                {rateLimitError}
+              </p>
+            )}
+            {limitActive && !rateLimitError && (
+              <p className="mt-2 text-center text-xs leading-5 text-amber-300" role="alert">
+                Attempt limit reached.
+                {attemptStatus.resetAt &&
+                  ` Try again after ${new Date(attemptStatus.resetAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`}
+              </p>
+            )}
+            {attemptStatus && (
+              <p className="mt-2 text-center text-xs text-purple-200/60">
+                {attemptStatus.remaining} attempts remaining
+              </p>
+            )}
           </div>
 
           {/* Login Link */}

@@ -5,6 +5,7 @@ import { followUser, unfollowUser } from "../../services/userService";
 import { useToast } from "../../hooks/useToast";
 import { useState } from "react";
 import { useHome } from "../../hooks/useHome";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
 function UserListModal({
   title,
@@ -64,7 +65,7 @@ function UserListModal({
       logger.error("user.follow_toggle.failed", error);
 
       showToast(
-        error.response?.data?.message || "Something went wrong",
+        getApiErrorMessage(error, "Something went wrong"),
         "error",
       );
     } finally {

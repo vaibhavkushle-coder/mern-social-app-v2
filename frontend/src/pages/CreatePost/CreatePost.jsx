@@ -6,12 +6,23 @@ import { ImagePlus, FileImage } from "lucide-react";
 import { useToast } from "../../hooks/useToast";
 import { FiArrowLeft } from "react-icons/fi";
 import { useHome } from "../../hooks/useHome";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const SUPPORTED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+]);
 
 function CreatePost() {
   const [caption, setCaption] = useState("");
   const [image, setImage] = useState(null);
   const [showImage, setShowImage] = useState(null);
   const [creatingPost, setCreatingPost] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -43,7 +54,7 @@ function CreatePost() {
       navigate("/");
     } catch (error) {
       logger.error("post.create.failed", error);
-      showToast("Failed to create post 📷", "error");
+      showToast(getApiErrorMessage(error, "Failed to create post 📷"), "error");
     } finally {
       setCreatingPost(false);
     }
@@ -184,11 +195,26 @@ function CreatePost() {
                 ref={fileInputRef}
                 id="image"
                 type="file"
-                accept="image/*"
+                accept=".jpg,.jpeg,.png,.webp,.gif,.avif,image/jpeg,image/png,image/webp,image/gif,image/avif"
                 className="hidden"
                 onChange={(e) => {
-                  setImage(e.target.files[0]);
-                  setShowImage(e.target.files[0]);
+                  const file = e.target.files?.[0];
+                  setUploadError("");
+
+                  if (!file) return;
+                  if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
+                    setUploadError("Choose a JPEG, PNG, WebP, GIF, or AVIF image.");
+                    e.target.value = "";
+                    return;
+                  }
+                  if (file.size > MAX_IMAGE_SIZE) {
+                    setUploadError("Image must be 5 MB or smaller.");
+                    e.target.value = "";
+                    return;
+                  }
+
+                  setImage(file);
+                  setShowImage(file);
                   captionRef.current?.focus();
                 }}
               />
@@ -227,9 +253,16 @@ function CreatePost() {
                     {image ? "Change Image" : "Upload Image"}
                   </p>
 
-                  <p className="text-xs text-gray-500 mt-1">PNG, JPG, JPEG</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    JPEG, PNG, WebP, GIF or AVIF · Max 5 MB
+                  </p>
                 </div>
               </label>
+              {uploadError && (
+                <p className="mt-2 text-xs text-red-400" role="alert">
+                  {uploadError}
+                </p>
+              )}
             </div>
 
             {/* ================= CAPTION ================= */}

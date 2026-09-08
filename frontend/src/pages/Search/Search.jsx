@@ -72,6 +72,7 @@ function Search() {
       await fetchSuggestedUsers();
     } catch (error) {
       logger.error("user.follow.failed", error);
+      setError(getApiErrorMessage(error, "Unable to follow this user."));
     } finally {
       setFollowingId(null);
     }
@@ -92,6 +93,7 @@ function Search() {
       await fetchSuggestedUsers();
     } catch (error) {
       logger.error("user.unfollow.failed", error);
+      setError(getApiErrorMessage(error, "Unable to unfollow this user."));
     } finally {
       setFollowingId(null);
     }
@@ -404,3 +406,4 @@ function Search() {
 
 export default Search;
 import logger from "../../utils/logger";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";

@@ -13,6 +13,7 @@ import { removeFollower } from "../../services/userService";
 import { useToast } from "../../hooks/useToast";
 import { logout } from "../../services/authService";
 import logger from "../../utils/logger";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
 function ProfileContent({
   user,
@@ -170,7 +171,7 @@ function ProfileContent({
       logger.error("user.remove_follower.failed", error);
 
       showToast(
-        error.response?.data?.message || "Failed to remove follower",
+        getApiErrorMessage(error, "Failed to remove follower"),
         "error",
       );
     } finally {

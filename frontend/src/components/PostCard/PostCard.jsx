@@ -28,6 +28,7 @@ import { reportPost } from "../../services/reportService";
 import { useSocket } from "../../hooks/useSocket";
 import { useConversation } from "../../hooks/useConversation";
 import logger from "../../utils/logger";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
 function PostCard({
   post,
@@ -215,6 +216,7 @@ function PostCard({
       }
     } catch (error) {
       logger.error("post.save_toggle.failed", error);
+      showToast(getApiErrorMessage(error, "Failed to update saved post"), "error");
     } finally {
       setSavingPost(false);
     }
@@ -249,7 +251,7 @@ function PostCard({
       await fetchConversations();
     } catch (error) {
       logger.error("post.share_send.failed", error);
-      showToast("Failed to share post", "error");
+      showToast(getApiErrorMessage(error, "Failed to share post"), "error");
     } finally {
       setSharingUserId(null);
     }
@@ -424,11 +426,10 @@ function PostCard({
                     } catch (error) {
                       logger.error("post.report.failed", error);
 
-                      if (error.response?.data?.message) {
-                        showToast(error.response.data.message, "error");
-                      } else {
-                        showToast("Failed to report post 🚩", "error");
-                      }
+                      showToast(
+                        getApiErrorMessage(error, "Failed to report post 🚩"),
+                        "error",
+                      );
                     } finally {
                       setReportingPost(false);
                     }

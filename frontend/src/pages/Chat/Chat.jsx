@@ -26,6 +26,7 @@ import { useToast } from "../../hooks/useToast";
 import { useConversation } from "../../hooks/useConversation";
 import logger from "../../utils/logger";
 import LoadingMoreIndicator from "../../components/LoadingMoreIndicator/LoadingMoreIndicator";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
 const EmojiPicker = lazy(() => import("emoji-picker-react"));
 
@@ -604,7 +605,7 @@ function Chat() {
         showToast("Edited successfully", "success");
       } catch (error) {
         logger.error("chat.message_edit.failed", error);
-        showToast("Failed to edit message", "error");
+      showToast(getApiErrorMessage(error, "Failed to edit message"), "error");
       } finally {
         setSending(false);
       }
@@ -724,7 +725,7 @@ function Chat() {
             : message,
         ),
       );
-      showToast("Failed to send message", "error");
+      showToast(getApiErrorMessage(error, "Failed to send message"), "error");
     }
   }
 
