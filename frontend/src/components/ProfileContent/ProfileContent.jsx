@@ -325,40 +325,6 @@ function ProfileContent({
             "
           />
 
-          {/* Back button */}
-          <button
-            onClick={() => navigate(-1)}
-            aria-label="Go back"
-            className="
-    absolute
-    top-3 right-2
-    w-8 h-8
-    rounded-xl
-    flex items-center justify-center
-
-    bg-[#08091c]/90
-    backdrop-blur-md
-
-    border border-purple-400/50
-    text-white
-
-    shadow-[0_0_5px_rgba(168,85,247,0.45),0_0_35px_rgba(124,58,237,0.25)]
-
-    hover:bg-purple-500/15
-    hover:border-purple-300
-    hover:shadow-[0_0_20px_rgba(168,85,247,0.65),0_0_45px_rgba(124,58,237,0.35)]
-
-    hover:scale-105
-    active:scale-95
-
-    transition-all duration-200
-    z-20
-  "
-          >
-            <span className="text-3xl leading-none font-light -mt-1">
-              <FiArrowLeft size={18} />
-            </span>
-          </button>
           {/* Profile Menu Button */}
           {isOwnProfile && (
             <button
@@ -366,7 +332,7 @@ function ProfileContent({
               aria-label="Profile menu"
               className="
                 absolute
-    top-3 right-15
+    top-3 right-3
     w-8 h-8
     rounded-xl
     flex items-center justify-center
@@ -614,11 +580,11 @@ function ProfileContent({
         <p
           className="
             text-sm font-semibold sm:text-sm
-            text-gray-300
-            mt-6
+            text-violet-300
+            mt-4
             w-full
             max-w-[200px]
-            ml-0.1
+            -ml-3
             leading-relaxed
             break-all
             
