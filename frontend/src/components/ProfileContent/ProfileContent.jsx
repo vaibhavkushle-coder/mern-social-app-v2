@@ -5,6 +5,7 @@ import {
   FiLogOut,
   FiMoreVertical,
   FiBookmark,
+  FiLock,
   FiCamera,
   FiArrowLeft,
 } from "react-icons/fi";
@@ -432,7 +433,7 @@ function ProfileContent({
             className="
               absolute
               top-14 right-4
-              w-40
+              w-44
               bg-[#0d1124]
               rounded-xl
               shadow-xl
@@ -459,6 +460,26 @@ function ProfileContent({
               <FiBookmark size={17} />
 
               <span className="font-medium text-sm">Saved Posts</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setIsMenuOpen(false);
+                navigate("/change-password");
+              }}
+              className="
+                flex items-center gap-3
+                px-4 py-2.5
+                w-full
+                text-left
+                text-gray-200
+                hover:bg-purple-500/10
+                transition
+              "
+            >
+              <FiLock size={17} />
+
+              <span className="font-medium text-sm">Change Password</span>
             </button>
 
             <button

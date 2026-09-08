@@ -15,6 +15,7 @@ const Notification = lazy(() => import("./pages/Notification/Notification"));
 const Chat = lazy(() => import("./pages/Chat/Chat"));
 const Messages = lazy(() => import("./pages/Messages;/Messages"));
 const SavePosts = lazy(() => import("./pages/SavedPosts/SavedPost"));
+const ChangePassword = lazy(() => import("./pages/ChangePassword/ChangePassword"));
 
 function App() {
   return (
@@ -91,6 +92,15 @@ function App() {
           element={
             <ProtectedRoute>
               <SavePosts />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/change-password"
+          element={
+            <ProtectedRoute>
+              <ChangePassword />
             </ProtectedRoute>
           }
         />

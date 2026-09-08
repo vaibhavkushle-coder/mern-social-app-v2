@@ -6,6 +6,7 @@ function PasswordInput({
   onChange,
   placeholder = "Enter your password...",
   label = "Password",
+  autoComplete,
 }) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -46,6 +47,7 @@ function PasswordInput({
           placeholder={placeholder}
           value={value}
           onChange={onChange}
+          autoComplete={autoComplete}
           className="
             w-full
             h-12
