@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useHome } from "../../hooks/useHome";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { FiBell, FiPlus } from "react-icons/fi";
 import {
   likePost,
   unlikePost,
@@ -18,6 +19,7 @@ import { getPostById } from "../../services/postService";
 import logger from "../../utils/logger";
 import LoadingMoreIndicator from "../../components/LoadingMoreIndicator/LoadingMoreIndicator";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import { useNotification } from "../../hooks/useNotification";
 
 function Home() {
   const [error, setError] = useState("");
@@ -81,7 +83,8 @@ function Home() {
     if (selectedPostId) return;
     function onScroll(event) {
       const element = event.currentTarget;
-      if (element.scrollHeight - element.scrollTop - element.clientHeight < 700) loadMorePosts();
+      if (element.scrollHeight - element.scrollTop - element.clientHeight < 700)
+        loadMorePosts();
     }
     const element = document.querySelector("[data-home-scroll]");
     element?.addEventListener("scroll", onScroll);
@@ -235,7 +238,10 @@ function Home() {
       showToast("Comment deleted successfully 🗑️", "success");
     } catch (error) {
       logger.error("comment.delete.failed", error);
-      showToast(getApiErrorMessage(error, "Failed to delete comment 🗑️"), "error");
+      showToast(
+        getApiErrorMessage(error, "Failed to delete comment 🗑️"),
+        "error",
+      );
     }
   }
 
@@ -257,7 +263,10 @@ function Home() {
       showToast("Comment updated successfully ✏️", "success");
     } catch (error) {
       logger.error("comment.edit.failed", error);
-      showToast(getApiErrorMessage(error, "Failed to update comment ✏️"), "error");
+      showToast(
+        getApiErrorMessage(error, "Failed to update comment ✏️"),
+        "error",
+      );
     }
   }
 
@@ -282,10 +291,63 @@ function Home() {
     }
   }
 
+  function HomeHeader() {
+    const { notificationUnreadCount } = useNotification();
+
+    return (
+      <header className="border-b border-white/[0.07]">
+        <div
+          className="mx-auto grid h-14 max-w-2xl 
+        grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center px-4 sm:px-5"
+        >
+          <Link
+            to="/create-post"
+            aria-label="Create post"
+            title="Create Post"
+            className="flex h-10 w-10 items-center justify-center 
+            justify-self-start rounded-xl border border-white/10
+             bg-white/[0.03] text-violet-300 transition-all 
+             hover:border-purple-400/30 hover:bg-purple-500/10 
+             hover:text-purple-300 active:scale-95"
+          >
+            <FiPlus size={24} strokeWidth={2.2} />
+          </Link>
+
+          <Link
+            to="/"
+            aria-label="Home"
+            className="min-w-0 justify-self-center px-2 
+            text-center text-xl font-extrabold tracking-normal text-violet-300"
+          >
+            Social<span className="text-purple-400">.</span>
+          </Link>
+
+          <Link
+            to="/notification"
+            aria-label="Notifications"
+            title="Notifications"
+            className="relative flex h-10 w-10 items-center justify-center 
+            justify-self-end rounded-xl border border-white/10 bg-white/[0.03] 
+            text-violet-300 transition-all hover:border-purple-400/30
+             hover:bg-purple-500/10 hover:text-purple-300 active:scale-95"
+          >
+            <FiBell size={21} strokeWidth={2.1} />
+            {notificationUnreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full border-2 border-[#0b0b1f] bg-red-500 px-0.5 text-[9px] font-bold leading-none text-white">
+                {notificationUnreadCount > 99 ? "99+" : notificationUnreadCount}
+              </span>
+            )}
+          </Link>
+        </div>
+      </header>
+    );
+  }
+
   if (error) {
     return (
       <div className="min-h-screen  bg-[#0b0b1f]">
         <Navbar />
+        <HomeHeader />
         <div className="flex justify-center items-center py-20">
           <p className="text-xl font-semibold text-red-500">{error}</p>
         </div>
@@ -297,8 +359,9 @@ function Home() {
     return (
       <div className="min-h-screen  bg-[#0b0b1f]">
         <Navbar />
+        <HomeHeader />
         <div className="flex justify-center items-center py-20">
-          <p className="text-xl font-semibold text-gray-200">
+          <p className="text-xl font-semibold text-violet-300">
             ⌛ Loading posts...
           </p>
         </div>
@@ -312,9 +375,10 @@ function Home() {
     return (
       <div className="min-h-screen  bg-[#0b0b1f]">
         <Navbar />
+        <HomeHeader />
         <div className="flex flex-col justify-center items-center py-20">
-          <h2 className="text-2xl font-bold text-gray-200">✖️ No Post Yet</h2>
-          <p className="text-gray-500 mt-2">
+          <h2 className="text-2xl font-bold text-violet-300">✖️ No Post Yet</h2>
+          <p className="text-violet-500 mt-2">
             Be the first one to create a post.
           </p>
         </div>
@@ -332,8 +396,9 @@ function Home() {
       }}
     >
       <Navbar />
+      <HomeHeader />
 
-      <div className="max-w-2xl mx-auto py-6 space-y-6 pb-20">
+      <div className="max-w-2xl mx-auto py-1 space-y-6 pb-20">
         {visiblePosts.map((post, index) => (
           <div key={post._id}>
             <PostCard

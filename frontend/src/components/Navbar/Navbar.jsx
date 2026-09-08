@@ -182,18 +182,6 @@ function Navbar() {
             </div>
           </NavLink>
 
-          {/* Notifications */}
-          <NavLink
-            to="/notification"
-            title="Notifications"
-            className={getNavClass}
-          >
-            <div className="relative">
-              <FiBell size={21} />
-              <Badge count={notificationUnreadCount} red />
-            </div>
-          </NavLink>
-
           {/* Profile */}
           <NavLink to="/profile" title="Profile" className={getNavClass}>
             {({ isActive }) =>

@@ -376,7 +376,11 @@ function Messages() {
         </div>
 
         {/* ================= CONVERSATIONS ================= */}
-        {filteredConversations.length === 0 ? (
+        {!conversationsLoaded ? (
+          <div className="flex items-center justify-center px-6 py-20">
+            <LoadingMoreIndicator label="Loading conversations..." />
+          </div>
+        ) : filteredConversations.length === 0 ? (
           <div
             className="flex flex-col items-center justify-center
           text-center px-6 py-20"
