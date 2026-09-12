@@ -604,10 +604,10 @@ function ProfileContent({
             text-violet-300
             mt-4
             w-full
-            max-w-[200px]
+            max-w-[270px]
             -ml-3
             leading-relaxed
-            break-all
+            
           "
         >
           {user?.bio || "Welcome to my profile"}
