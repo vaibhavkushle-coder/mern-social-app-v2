@@ -122,31 +122,31 @@ The application uses JWT authentication with session revocation, MongoDB transac
 
 ### Home Feed
 
-![Home Feed](screenshots/home.jpeg)
+<img src="screenshots/home.jpeg" alt="Home Feed" width="300">
 
 ### Profile
 
-![Profile](screenshots/profile.jpeg)
+<img src="screenshots/profile.jpeg" alt="Profile" width="300">
 
 ### Messages
 
-![Messages](screenshots/messages.jpeg)
+<img src="screenshots/messages.jpeg" alt="Messages" width="300">
 
 ### Chat
 
-![Chat](screenshots/chat.jpeg)
+<img src="screenshots/chat.jpeg" alt="Chat" width="300">
 
 ### Create Post
 
-![Create Post](screenshots/create-post.jpeg)
+<img src="screenshots/create-post.jpeg" alt="Create Post" width="300">
 
 ### Notifications
 
-![Notifications](screenshots/notification.jpeg)
+<img src="screenshots/notification.jpeg" alt="Notifications" width="300">
 
 ### Change Password
 
-![Change Password](screenshots/change-password.jpeg)
+<img src="screenshots/change-password.jpeg" alt="Change Password" width="300">
 
 ## Installation & Setup
 
