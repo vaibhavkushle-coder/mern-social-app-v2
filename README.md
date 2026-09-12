@@ -10,78 +10,80 @@ The application uses JWT authentication with session revocation, MongoDB transac
 
 - User registration and login with JWT authentication
 - Secure logout with server-side session/token revocation
-- Change password with automatic re-authentication and forced logout of other sessions
-- Rate-limited login/registration with live attempt-count feedback
+- Change password with automatic re-authentication
+- Automatic session invalidation across devices after password change
+- Rate-limited login and registration with attempt-count feedback
 
 ### Profile
 
-- View and edit own profile (name, bio, profile picture)
+- View and edit own profile
+- Profile picture upload
 - View other users' profiles
-- Paginated, infinite-scrolling posts on profile pages
-- Followers/following list modals with in-modal search
+- Followers/following lists with in-modal search
 - Remove follower
+- Paginated, infinite-scrolling profile posts
 
-### Social / Follow
+### Social & Search
 
 - Follow / unfollow users
-- Suggested users to follow (friend-of-friend based, with fallback)
+- Suggested users to follow with friend-of-friend recommendations and fallback
 - Live user search by name
 
 ### Posts
 
-- Create posts with image upload (Cloudinary) and caption
+- Create posts with image and caption
 - Edit and delete own posts
+- Cloudinary image storage
+- Client- and server-side image validation
 - Infinite-scrolling home feed
-- Direct-link to and auto-scroll to a specific shared post
-- Report a post
-- Copy shareable post link
+- Shareable post links
+- Auto-scroll to a specific shared post
+- Report posts
+- Save / unsave posts
+- Dedicated saved posts page
 
 ### Likes & Comments
 
-- Like/unlike posts with animated interaction
-- View list of users who liked a post
+- Like / unlike posts with animated interaction
+- View users who liked a post
 - Add, edit, and delete comments
-
-### Saved Posts
-
-- Save/unsave posts
-- Dedicated saved posts page
 
 ### Notifications
 
-- Real-time notifications for follows, likes, and comments (Socket.IO)
+- Real-time notifications for follows, likes, and comments using Socket.IO
 - Live unread notification badge
 - Infinite-scrolling notification history
-- Mark-all-as-read
-- Multi-select delete notifications
-- Auto-cleanup of notifications for deleted posts
+- Mark notifications as read
+- Multi-select notification deletion
+- Automatic cleanup of stale post notifications
 
-### Messaging / Chat
+### Real-Time Messaging
 
-- Real-time one-on-one direct messaging (Socket.IO)
-- Share posts directly via chat
-- Conversation list with unread counts, sorted by recent activity
-- Message delivery and read receipts (sent/delivered/seen)
+- One-to-one real-time direct messaging using Socket.IO
+- Conversation list with unread counts
+- Conversations sorted by recent activity
+- Message delivery and read receipts
 - Typing indicators
-- Online/offline presence with last-seen timestamps
+- Online / offline presence
+- Last-seen timestamps
 - Optimistic message sending with failure/retry state
-- Reply to specific messages (including swipe-to-reply)
+- Reply to messages, including swipe-to-reply
 - Edit sent messages
-- Delete message for me / delete for everyone (within 1 hour)
-- Multi-select bulk message delete
+- Delete messages for me / everyone
+- Bulk message deletion
 - Delete entire conversations
 - Emoji picker
-- Inline shared-post previews in chat
+- Share posts directly in chat
+- Inline shared-post previews
 
-### Search & Performance
+### Performance & Security
 
-- Cursor-based infinite scroll/pagination across feed, profile, messages, and notifications
-
-### Security & UX Safeguards
-
-- Client- and server-side image type/size validation with instant feedback
-- Rate-limiting feedback on repeated actions
-- Automatic session invalidation across devices on password change
+- Cursor-based pagination across feed, profile, messages, and notifications
+- Server-side input validation
+- Image MIME and file-signature validation
+- Rate limiting for sensitive actions
+- JWT session revocation
+- MongoDB transactions for race-safe updates
 
 ## Tech Stack
 
@@ -90,7 +92,7 @@ The application uses JWT authentication with session revocation, MongoDB transac
 - React 19
 - Vite
 - Tailwind CSS
-- React Router
+- React Router DOM
 - Axios
 - Socket.IO Client
 
@@ -116,76 +118,102 @@ The application uses JWT authentication with session revocation, MongoDB transac
 - Cloudinary
 - streamifier
 
-## Features
+## Screenshots
 
-### Authentication & Account
+### Home Feed
 
-- User registration and login with JWT authentication
-- Secure logout with server-side session/token revocation
-- Change password with automatic re-authentication
-- Rate-limited login and registration with attempt-count feedback
+![Home Feed](screenshots/home.jpeg)
 
 ### Profile
 
-- View and edit own profile
-- Profile picture upload
-- View other users' profiles
-- Followers/following lists
-- Remove follower
-- Paginated profile posts
+![Profile](screenshots/profile.jpeg)
 
-### Social
+### Messages
 
-- Follow / unfollow users
-- Suggested users to follow
-- Search users by name
+![Messages](screenshots/messages.jpeg)
 
-### Posts
+### Chat
 
-- Create posts with image and caption
-- Edit and delete own posts
-- Cloudinary image storage
-- Infinite-scrolling home feed
-- Shareable post links
-- Report posts
-- Save / unsave posts
+![Chat](screenshots/chat.jpeg)
 
-### Likes & Comments
+### Create Post
 
-- Like / unlike posts
-- View users who liked a post
-- Add, edit, and delete comments
+![Create Post](screenshots/create-post.jpeg)
 
 ### Notifications
 
-- Real-time notifications for follows, likes, and comments
-- Unread notification count
-- Notification history with pagination
-- Mark notifications as read
-- Multi-select notification deletion
-- Automatic cleanup of stale post notifications
+![Notifications](screenshots/notification.jpeg)
 
-### Real-Time Messaging
+### Change Password
 
-- One-to-one real-time messaging
-- Message delivery and read receipts
-- Typing indicators
-- Online / offline presence
-- Last-seen timestamps
-- Optimistic message sending
-- Reply to messages
-- Edit sent messages
-- Delete messages for me / everyone
-- Bulk message deletion
-- Delete conversations
-- Emoji picker
-- Share posts directly in chat
+![Change Password](screenshots/change-password.jpeg)
 
-### Performance & Security
+## Installation & Setup
 
-- Cursor-based pagination
-- Server-side input validation
-- Image MIME and file-signature validation
-- Rate limiting for sensitive actions
-- JWT session revocation
-- MongoDB transactions for race-safe updates
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/vaibhavkushle-coder/mern-social-app-v2.git
+cd mern-social-app-v2
+```
+
+### 2. Install Dependencies
+
+#### Backend
+
+```bash
+cd backend
+npm install
+```
+
+#### Frontend
+
+```bash
+cd ../frontend
+npm install
+```
+
+### 3. Environment Variables
+
+The backend requires environment variables for database connection, authentication, Cloudinary, CORS, and other server configuration.
+
+Create the environment file inside the backend folder:
+
+```text
+backend/.env
+```
+
+Use `backend/.env.example` as a reference for the required variables.
+
+> Never commit `.env` files or secret API keys to GitHub.
+
+### 4. Run the Application
+
+Start the backend:
+
+```bash
+cd backend
+npm run dev
+```
+
+In another terminal, start the frontend:
+
+```bash
+cd frontend
+npm run dev
+```
+
+The frontend and backend run as separate development servers.
+
+## Live Demo
+
+[View Live Demo](https://frontend-one-omega-14.vercel.app/)
+
+## Author
+
+### Vaibhav Kushle
+
+Aspiring Full Stack MERN Developer focused on building practical, real-world web applications.
+
+- GitHub: [vaibhavkushle-coder](https://github.com/vaibhavkushle-coder)
+- Project: `mern-social-app-v2`
