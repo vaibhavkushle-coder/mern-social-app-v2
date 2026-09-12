@@ -13,6 +13,7 @@ import {
 } from "react";
 import { useSocket } from "../hooks/useSocket";
 import { useUser } from "../hooks/useUser";
+import logger from "../utils/logger";
 
 export const NotificationContext = createContext();
 const INITIAL_NOTIFICATION_META = {
@@ -61,14 +62,19 @@ export function NotificationProvider({ children }) {
           );
           notificationsRef.current = nextNotifications;
           setNotifications(nextNotifications);
-          setNotificationMeta((meta) => ({ ...meta, loaded: true, hasMore: response.data.hasMore, nextCursor: response.data.nextCursor }));
+          setNotificationMeta((meta) => ({
+            ...meta,
+            loaded: true,
+            hasMore: response.data.hasMore,
+            nextCursor: response.data.nextCursor,
+          }));
           setNotificationUnreadCount(response.data.unreadCount || 0);
         }
 
         return response;
       })
       .catch((error) => {
-      logger.error("notification.fetch.failed", error);
+        logger.error("notification.fetch.failed", error);
         throw error;
       })
       .finally(() => {
@@ -200,7 +206,11 @@ export function NotificationProvider({ children }) {
       const nextNotifications = [...map.values()];
       notificationsRef.current = nextNotifications;
       setNotifications(nextNotifications);
-      setNotificationMeta((meta) => ({ ...meta, hasMore: response.data.hasMore, nextCursor: response.data.nextCursor }));
+      setNotificationMeta((meta) => ({
+        ...meta,
+        hasMore: response.data.hasMore,
+        nextCursor: response.data.nextCursor,
+      }));
       setNotificationUnreadCount(response.data.unreadCount || 0);
     } finally {
       if (notificationLoadMoreRequestRef.current === requestMarker) {
@@ -281,4 +291,3 @@ export function NotificationProvider({ children }) {
     </NotificationContext.Provider>
   );
 }
-import logger from "../utils/logger";

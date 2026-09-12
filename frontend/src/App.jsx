@@ -13,115 +13,117 @@ const UserProfile = lazy(() => import("./pages/UserProfile/UserProfile"));
 const Search = lazy(() => import("./pages/Search/Search"));
 const Notification = lazy(() => import("./pages/Notification/Notification"));
 const Chat = lazy(() => import("./pages/Chat/Chat"));
-const Messages = lazy(() => import("./pages/Messages;/Messages"));
+const Messages = lazy(() => import("./pages/Messages/Messages"));
 const SavePosts = lazy(() => import("./pages/SavedPosts/SavedPost"));
-const ChangePassword = lazy(() => import("./pages/ChangePassword/ChangePassword"));
+const ChangePassword = lazy(
+  () => import("./pages/ChangePassword/ChangePassword"),
+);
 
 function App() {
   return (
     <>
       <Suspense fallback={<div className="min-h-screen bg-[#0f1117]" />}>
         <Routes>
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <Login />
-            </PublicRoute>
-          }
-        />
+          <Route
+            path="/login"
+            element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            }
+          />
 
-        <Route
-          path="/register"
-          element={
-            <PublicRoute>
-              <Register />
-            </PublicRoute>
-          }
-        />
+          <Route
+            path="/register"
+            element={
+              <PublicRoute>
+                <Register />
+              </PublicRoute>
+            }
+          />
 
-        <Route path="/" element={<Home />} />
+          <Route path="/" element={<Home />} />
 
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/create-post"
-          element={
-            <ProtectedRoute>
-              <CreatePost />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/create-post"
+            element={
+              <ProtectedRoute>
+                <CreatePost />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/profile/:id"
-          element={
-            <ProtectedRoute>
-              <UserProfile />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/profile/:id"
+            element={
+              <ProtectedRoute>
+                <UserProfile />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/notification"
-          element={
-            <ProtectedRoute>
-              <Notification />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/notification"
+            element={
+              <ProtectedRoute>
+                <Notification />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/messages"
-          element={
-            <ProtectedRoute>
-              <Messages />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/messages"
+            element={
+              <ProtectedRoute>
+                <Messages />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/saved-posts"
-          element={
-            <ProtectedRoute>
-              <SavePosts />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/saved-posts"
+            element={
+              <ProtectedRoute>
+                <SavePosts />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/change-password"
-          element={
-            <ProtectedRoute>
-              <ChangePassword />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/change-password"
+            element={
+              <ProtectedRoute>
+                <ChangePassword />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/chat/:id"
-          element={
-            <ProtectedRoute>
-              <Chat />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/chat/:id"
+            element={
+              <ProtectedRoute>
+                <Chat />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/search"
-          element={
-            <ProtectedRoute>
-              <Search />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/search"
+            element={
+              <ProtectedRoute>
+                <Search />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </Suspense>
       <Toast />

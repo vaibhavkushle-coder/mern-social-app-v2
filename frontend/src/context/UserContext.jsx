@@ -3,6 +3,7 @@ import {
   getUserProfile,
   editProfile as editProfileService,
 } from "../services/userService";
+import logger from "../utils/logger";
 
 export const UserContext = createContext();
 
@@ -93,4 +94,3 @@ export function UserProvider({ children }) {
     </UserContext.Provider>
   );
 }
-import logger from "../utils/logger";

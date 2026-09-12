@@ -13,14 +13,18 @@ import { useToast } from "../../hooks/useToast";
 import { getUserProfile } from "../../services/userService";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import useAuthRateLimit from "../../hooks/useAuthRateLimit";
+import logger from "../../utils/logger";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [rateLimitError, setRateLimitError] = useState("");
-  const { status: attemptStatus, refresh: refreshAttempts, syncFromError } =
-    useAuthRateLimit("login");
+  const {
+    status: attemptStatus,
+    refresh: refreshAttempts,
+    syncFromError,
+  } = useAuthRateLimit("login");
 
   const { setUser } = useUser();
   const { showToast } = useToast();
@@ -28,7 +32,8 @@ function Login() {
   const navigate = useNavigate();
   const limitActive =
     attemptStatus?.remaining === 0 &&
-    (!attemptStatus.resetAt || new Date(attemptStatus.resetAt).getTime() > Date.now());
+    (!attemptStatus.resetAt ||
+      new Date(attemptStatus.resetAt).getTime() > Date.now());
 
   useEffect(() => {
     if (attemptStatus?.remaining > 0) setRateLimitError("");
@@ -190,12 +195,18 @@ function Login() {
               {submitting ? "Logging in..." : "Login"}
             </Button>
             {rateLimitError && (
-              <p className="mt-2 text-center text-xs leading-5 text-amber-300" role="alert">
+              <p
+                className="mt-2 text-center text-xs leading-5 text-amber-300"
+                role="alert"
+              >
                 {rateLimitError}
               </p>
             )}
             {limitActive && !rateLimitError && (
-              <p className="mt-2 text-center text-xs leading-5 text-amber-300" role="alert">
+              <p
+                className="mt-2 text-center text-xs leading-5 text-amber-300"
+                role="alert"
+              >
                 Attempt limit reached.
                 {attemptStatus.resetAt &&
                   ` Try again after ${new Date(attemptStatus.resetAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`}
@@ -238,4 +249,3 @@ function Login() {
 }
 
 export default Login;
-import logger from "../../utils/logger";

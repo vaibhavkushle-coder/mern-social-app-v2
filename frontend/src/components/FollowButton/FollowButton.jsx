@@ -4,6 +4,7 @@ import { useToast } from "../../hooks/useToast";
 import { useHome } from "../../hooks/useHome";
 import { useState } from "react";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import logger from "../../utils/logger";
 
 function FollowButton({ profileUser }) {
   const [loading, setLoading] = useState(false);
@@ -49,10 +50,7 @@ function FollowButton({ profileUser }) {
     } catch (error) {
       logger.error("user.follow_toggle.failed", error);
 
-      showToast(
-        getApiErrorMessage(error, "Something went wrong"),
-        "error",
-      );
+      showToast(getApiErrorMessage(error, "Something went wrong"), "error");
     } finally {
       setLoading(false);
     }
@@ -118,4 +116,3 @@ function FollowButton({ profileUser }) {
   );
 }
 export default FollowButton;
-import logger from "../../utils/logger";

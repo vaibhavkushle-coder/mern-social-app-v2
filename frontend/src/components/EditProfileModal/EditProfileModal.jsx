@@ -3,6 +3,7 @@ import { useState } from "react";
 import Button from "../Button/Button";
 import { useToast } from "../../hooks/useToast";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import logger from "../../utils/logger";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const SUPPORTED_IMAGE_TYPES = new Set([
@@ -46,10 +47,7 @@ function EditProfileModal({ user, onClose }) {
     } catch (error) {
       logger.error("user.edit_profile.failed", error);
 
-      showToast(
-        getApiErrorMessage(error, "Failed to update profile"),
-        "error",
-      );
+      showToast(getApiErrorMessage(error, "Failed to update profile"), "error");
     } finally {
       setSaving(false);
     }
@@ -180,7 +178,9 @@ function EditProfileModal({ user, onClose }) {
 
                 if (file) {
                   if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
-                    setUploadError("Choose a JPEG, PNG, WebP, GIF, or AVIF image.");
+                    setUploadError(
+                      "Choose a JPEG, PNG, WebP, GIF, or AVIF image.",
+                    );
                     e.target.value = "";
                     return;
                   }
@@ -248,4 +248,3 @@ function EditProfileModal({ user, onClose }) {
 }
 
 export default EditProfileModal;
-import logger from "../../utils/logger";

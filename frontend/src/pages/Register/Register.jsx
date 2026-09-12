@@ -12,6 +12,7 @@ import PageHeader from "../../components/PageHeader/PageHeader";
 import { useToast } from "../../hooks/useToast";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
 import useAuthRateLimit from "../../hooks/useAuthRateLimit";
+import logger from "../../utils/logger";
 
 function Register() {
   const [name, setName] = useState("");
@@ -19,8 +20,11 @@ function Register() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [rateLimitError, setRateLimitError] = useState("");
-  const { status: attemptStatus, refresh: refreshAttempts, syncFromError } =
-    useAuthRateLimit("register");
+  const {
+    status: attemptStatus,
+    refresh: refreshAttempts,
+    syncFromError,
+  } = useAuthRateLimit("register");
 
   const navigate = useNavigate();
 
@@ -28,7 +32,8 @@ function Register() {
   const { showToast } = useToast();
   const limitActive =
     attemptStatus?.remaining === 0 &&
-    (!attemptStatus.resetAt || new Date(attemptStatus.resetAt).getTime() > Date.now());
+    (!attemptStatus.resetAt ||
+      new Date(attemptStatus.resetAt).getTime() > Date.now());
 
   useEffect(() => {
     if (attemptStatus?.remaining > 0) setRateLimitError("");
@@ -201,12 +206,18 @@ function Register() {
               <span>{submitting ? "Creating account..." : "Register"}</span>
             </Button>
             {rateLimitError && (
-              <p className="mt-2 text-center text-xs leading-5 text-amber-300" role="alert">
+              <p
+                className="mt-2 text-center text-xs leading-5 text-amber-300"
+                role="alert"
+              >
                 {rateLimitError}
               </p>
             )}
             {limitActive && !rateLimitError && (
-              <p className="mt-2 text-center text-xs leading-5 text-amber-300" role="alert">
+              <p
+                className="mt-2 text-center text-xs leading-5 text-amber-300"
+                role="alert"
+              >
                 Attempt limit reached.
                 {attemptStatus.resetAt &&
                   ` Try again after ${new Date(attemptStatus.resetAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`}
@@ -249,4 +260,3 @@ function Register() {
 }
 
 export default Register;
-import logger from "../../utils/logger";

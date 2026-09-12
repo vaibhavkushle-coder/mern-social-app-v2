@@ -6,6 +6,7 @@ import { useToast } from "../../hooks/useToast";
 import { useState } from "react";
 import { useHome } from "../../hooks/useHome";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import logger from "../../utils/logger";
 
 function UserListModal({
   title,
@@ -64,10 +65,7 @@ function UserListModal({
     } catch (error) {
       logger.error("user.follow_toggle.failed", error);
 
-      showToast(
-        getApiErrorMessage(error, "Something went wrong"),
-        "error",
-      );
+      showToast(getApiErrorMessage(error, "Something went wrong"), "error");
     } finally {
       setActionUserId(null);
     }
@@ -596,4 +594,3 @@ function UserListModal({
 }
 
 export default UserListModal;
-import logger from "../../utils/logger";

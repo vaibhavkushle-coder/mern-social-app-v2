@@ -7,6 +7,7 @@ import { useUser } from "../../hooks/useUser";
 import { useNavigate } from "react-router-dom";
 import FollowButton from "../../components/FollowButton/FollowButton";
 import LoadingMoreIndicator from "../../components/LoadingMoreIndicator/LoadingMoreIndicator";
+import logger from "../../utils/logger";
 
 function UserProfile() {
   const { id } = useParams();
@@ -259,4 +260,3 @@ function UserProfile() {
 }
 
 export default UserProfile;
-import logger from "../../utils/logger";

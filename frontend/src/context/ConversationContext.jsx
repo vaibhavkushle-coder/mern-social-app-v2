@@ -9,6 +9,7 @@ import {
 import { getConversations } from "../services/messageService";
 import { useUser } from "../hooks/useUser";
 import { useSocket } from "../hooks/useSocket";
+import logger from "../utils/logger";
 
 export const ConversationContext = createContext();
 const INITIAL_CONVERSATION_META = {
@@ -59,9 +60,16 @@ export function ConversationProvider({ children }) {
           requestVersionRef.current === requestVersion
         ) {
           setConversations((prev) => {
-            const map = new Map(response.data.conversations.map((item) => [item.user._id, item]));
-            prev.forEach((item) => { if (!map.has(item.user._id)) map.set(item.user._id, item); });
-            return [...map.values()].sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
+            const map = new Map(
+              response.data.conversations.map((item) => [item.user._id, item]),
+            );
+            prev.forEach((item) => {
+              if (!map.has(item.user._id)) map.set(item.user._id, item);
+            });
+            return [...map.values()].sort(
+              (a, b) =>
+                new Date(b.lastMessageTime) - new Date(a.lastMessageTime),
+            );
           });
           setConversationMeta({
             hasMore: response.data.hasMore,
@@ -75,7 +83,7 @@ export function ConversationProvider({ children }) {
         return response;
       })
       .catch((error) => {
-      logger.error("conversation.fetch.failed", error);
+        logger.error("conversation.fetch.failed", error);
         throw error;
       })
       .finally(() => {
@@ -129,8 +137,7 @@ export function ConversationProvider({ children }) {
           );
           prev.forEach((item) => map.set(item.user._id, item));
           return [...map.values()].sort(
-            (a, b) =>
-              new Date(b.lastMessageTime) - new Date(a.lastMessageTime),
+            (a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime),
           );
         });
         setConversationMeta({
@@ -235,8 +242,7 @@ export function ConversationProvider({ children }) {
 
       setConversations((prev) => {
         const targetConversation = prev.find(
-          (conversation) =>
-            conversation.user?._id?.toString() === targetUserId,
+          (conversation) => conversation.user?._id?.toString() === targetUserId,
         );
 
         if (!targetConversation) return prev;
@@ -335,7 +341,13 @@ export function ConversationProvider({ children }) {
 
       setConversations((prev) => {
         const other = message.sender;
-        const next = { user: other, lastMessage: message.text, lastMessageTime: message.createdAt, lastMessageId: message._id, unreadCount: 1 };
+        const next = {
+          user: other,
+          lastMessage: message.text,
+          lastMessageTime: message.createdAt,
+          lastMessageId: message._id,
+          unreadCount: 1,
+        };
         const existing = prev.find((item) => item.user._id === other._id);
         if (existing) next.unreadCount = (existing.unreadCount || 0) + 1;
         return [next, ...prev.filter((item) => item.user._id !== other._id)];
@@ -393,4 +405,3 @@ export function ConversationProvider({ children }) {
     </ConversationContext.Provider>
   );
 }
-import logger from "../utils/logger";

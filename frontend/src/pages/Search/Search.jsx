@@ -9,6 +9,8 @@ import {
 } from "../../services/userService";
 import { useUser } from "../../hooks/useUser";
 import { useHome } from "../../hooks/useHome";
+import logger from "../../utils/logger";
+import getApiErrorMessage from "../../utils/getApiErrorMessage";
 
 function Search() {
   const [search, setSearch] = useState("");
@@ -405,5 +407,3 @@ function Search() {
 }
 
 export default Search;
-import logger from "../../utils/logger";
-import getApiErrorMessage from "../../utils/getApiErrorMessage";

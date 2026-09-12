@@ -7,6 +7,7 @@ import { useToast } from "../../hooks/useToast";
 import { FiArrowLeft } from "react-icons/fi";
 import { useHome } from "../../hooks/useHome";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import logger from "../../utils/logger";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const SUPPORTED_IMAGE_TYPES = new Set([
@@ -203,7 +204,9 @@ function CreatePost() {
 
                   if (!file) return;
                   if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
-                    setUploadError("Choose a JPEG, PNG, WebP, GIF, or AVIF image.");
+                    setUploadError(
+                      "Choose a JPEG, PNG, WebP, GIF, or AVIF image.",
+                    );
                     e.target.value = "";
                     return;
                   }
@@ -362,4 +365,3 @@ function CreatePost() {
 }
 
 export default CreatePost;
-import logger from "../../utils/logger";

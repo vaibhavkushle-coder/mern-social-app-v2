@@ -14,6 +14,7 @@ import { useConversation } from "../../hooks/useConversation";
 import { useUser } from "../../hooks/useUser";
 import LoadingMoreIndicator from "../../components/LoadingMoreIndicator/LoadingMoreIndicator";
 import getApiErrorMessage from "../../utils/getApiErrorMessage";
+import logger from "../../utils/logger";
 
 function Messages() {
   const [search, setSearch] = useState("");
@@ -45,7 +46,9 @@ function Messages() {
     setDeleteError("");
   }, [user?._id]);
 
-  useEffect(() => { if (!conversationsLoaded) fetchConversations().catch(() => {}); }, [conversationsLoaded, fetchConversations]);
+  useEffect(() => {
+    if (!conversationsLoaded) fetchConversations().catch(() => {});
+  }, [conversationsLoaded, fetchConversations]);
 
   const navigate = useNavigate();
   const { socket, onlineUsers } = useSocket();
@@ -141,7 +144,7 @@ function Messages() {
       try {
         await fetchConversations();
       } catch (error) {
-      logger.error("conversation.refresh.failed", error);
+        logger.error("conversation.refresh.failed", error);
       }
     }
 
@@ -690,4 +693,3 @@ function Messages() {
 }
 
 export default Messages;
-import logger from "../../utils/logger";
